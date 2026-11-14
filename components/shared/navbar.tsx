@@ -4,7 +4,6 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { useRouter, usePathname } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { Button, buttonVariants } from '@/components/ui/button'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -13,7 +12,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { Home, Settings, LogOut } from 'lucide-react'
+import { Home, Settings, LogOut, ChevronDown } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 
@@ -27,7 +26,7 @@ export function Navbar({ user }: NavbarProps) {
   const supabase = createClient()
 
   const name = user.user_metadata?.full_name || user.email?.split('@')[0] || 'Driver'
-  const initials = name.slice(0, 2).toUpperCase()
+  const initials = name.split(' ').map((n: string) => n[0]).slice(0, 2).join('').toUpperCase()
 
   async function handleSignOut() {
     await supabase.auth.signOut()
@@ -36,81 +35,88 @@ export function Navbar({ user }: NavbarProps) {
     router.refresh()
   }
 
+  const navLinks = [
+    { href: '/dashboard', label: 'My Garage', Icon: Home },
+    { href: '/settings',  label: 'Settings',  Icon: Settings },
+  ]
+
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-border bg-card/80 backdrop-blur supports-[backdrop-filter]:bg-card/60">
+    <header className="sticky top-0 z-50 w-full border-b border-border/50 bg-background/90 backdrop-blur-md">
       <div className="container max-w-6xl mx-auto flex h-14 items-center justify-between px-4">
-        <Link href="/dashboard" className="flex items-center gap-2">
-          <Image src="/logo.jpeg" alt="GarageFlo" width={32} height={32} className="rounded-lg" />
-          <span className="font-black text-lg hidden sm:block">
-            <span className="text-foreground">Garage</span>
-            <span className="text-primary">Flo</span>
+
+        {/* Logo */}
+        <Link href="/dashboard" className="flex items-center gap-2 shrink-0">
+          <Image src="/logo.jpeg" alt="GarageFlo" width={24} height={24} className="rounded-md" />
+          <span className="font-bold text-sm tracking-tight hidden sm:block">
+            <span className="text-foreground">Garage</span><span className="text-primary">Flo</span>
           </span>
         </Link>
 
-        <nav className="hidden md:flex items-center gap-1">
-          <Link
-            href="/dashboard"
-            className={cn(
-              buttonVariants({ variant: pathname === '/dashboard' ? 'secondary' : 'ghost', size: 'sm' }),
-              'gap-1.5'
-            )}
-          >
-            <Home className="h-4 w-4" />
-            Garage
-          </Link>
-          <Link
-            href="/settings"
-            className={cn(
-              buttonVariants({ variant: pathname === '/settings' ? 'secondary' : 'ghost', size: 'sm' }),
-              'gap-1.5'
-            )}
-          >
-            <Settings className="h-4 w-4" />
-            Settings
-          </Link>
+        {/* Desktop nav */}
+        <nav className="hidden md:flex items-center gap-0.5">
+          {navLinks.map(({ href, label }) => {
+            const active = pathname === href || (href !== '/dashboard' && pathname.startsWith(href))
+            return (
+              <Link
+                key={href}
+                href={href}
+                className={cn(
+                  'px-3 py-1.5 rounded-lg text-sm font-medium transition-colors',
+                  active
+                    ? 'bg-primary/10 text-primary'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-secondary/50'
+                )}
+              >
+                {label}
+              </Link>
+            )
+          })}
         </nav>
 
-        <div className="flex items-center gap-2">
-          <DropdownMenu>
-            <DropdownMenuTrigger className="relative h-9 w-9 rounded-full p-0 hover:bg-transparent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-              <Avatar className="h-9 w-9 border-2 border-primary/30">
-                <AvatarImage src={user.user_metadata?.avatar_url} />
-                <AvatarFallback className="bg-primary/20 text-primary font-bold text-xs">
-                  {initials}
-                </AvatarFallback>
-              </Avatar>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="bg-card border-border w-48">
-              <div className="px-3 py-2">
-                <p className="text-sm font-medium truncate">{name}</p>
-                <p className="text-xs text-muted-foreground truncate">{user.email}</p>
-              </div>
-              <DropdownMenuSeparator className="bg-border" />
+        {/* Profile menu */}
+        <DropdownMenu>
+          <DropdownMenuTrigger className="flex items-center gap-1.5 rounded-lg px-2 py-1.5 hover:bg-secondary/50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+            <Avatar className="h-6 w-6 border border-border/60">
+              <AvatarImage src={user.user_metadata?.avatar_url} />
+              <AvatarFallback className="bg-secondary text-muted-foreground font-semibold text-[10px]">
+                {initials}
+              </AvatarFallback>
+            </Avatar>
+            <span className="hidden sm:block text-xs font-medium max-w-24 truncate">
+              {name.split(' ')[0]}
+            </span>
+            <ChevronDown className="hidden sm:block h-3 w-3 text-muted-foreground/60" />
+          </DropdownMenuTrigger>
+
+          <DropdownMenuContent align="end" className="bg-card border-border/60 w-48">
+            <div className="px-3 py-2.5">
+              <p className="text-xs font-semibold truncate">{name}</p>
+              <p className="text-[11px] text-muted-foreground truncate mt-0.5">{user.email}</p>
+            </div>
+            <DropdownMenuSeparator className="bg-border/50" />
+
+            {navLinks.map(({ href, label, Icon }) => (
               <DropdownMenuItem
-                className="cursor-pointer hover:bg-secondary md:hidden"
-                onClick={() => router.push('/dashboard')}
+                key={href}
+                className="cursor-pointer hover:bg-secondary/60 md:hidden text-sm"
+                onClick={() => router.push(href)}
               >
-                <Home className="h-4 w-4 mr-2" />
-                Garage
+                <Icon className="h-3.5 w-3.5 mr-2 text-muted-foreground" />
+                {label}
               </DropdownMenuItem>
-              <DropdownMenuItem
-                className="cursor-pointer hover:bg-secondary"
-                onClick={() => router.push('/settings')}
-              >
-                <Settings className="h-4 w-4 mr-2" />
-                Settings
-              </DropdownMenuItem>
-              <DropdownMenuSeparator className="bg-border" />
-              <DropdownMenuItem
-                onClick={handleSignOut}
-                className="cursor-pointer text-danger hover:bg-danger/10 hover:text-danger focus:bg-danger/10 focus:text-danger"
-              >
-                <LogOut className="h-4 w-4 mr-2" />
-                Sign Out
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
+            ))}
+            <DropdownMenuSeparator className="bg-border/50 md:hidden" />
+
+            <DropdownMenuItem
+              onClick={handleSignOut}
+              className="cursor-pointer text-sm text-danger hover:bg-danger/10 hover:text-danger focus:bg-danger/10 focus:text-danger"
+            >
+              <LogOut className="h-3.5 w-3.5 mr-2" />
+              Sign Out
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+
       </div>
     </header>
   )
