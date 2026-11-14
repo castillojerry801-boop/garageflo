@@ -11,6 +11,8 @@ import { Paperclip, Upload, FileText, Image as ImageIcon, Trash2, ExternalLink, 
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 
+const SIGNED_URL_EXPIRY_SECONDS = 3600
+
 interface AttachmentsTabProps {
   vehicleId: string
   userId: string
@@ -19,10 +21,12 @@ interface AttachmentsTabProps {
 
 export function AttachmentsTab({ vehicleId, userId, attachments }: AttachmentsTabProps) {
   const router = useRouter()
-  const supabase = createClient()
+  // Stable client reference — createBrowserClient is called once per component mount
+  const supabase = useRef(createClient()).current
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [uploading, setUploading] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [viewingId, setViewingId] = useState<string | null>(null)
   const [label, setLabel] = useState('')
 
   async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
@@ -36,6 +40,7 @@ export function AttachmentsTab({ vehicleId, userId, attachments }: AttachmentsTa
 
     setUploading(true)
     const ext = file.name.split('.').pop()
+    // Path pattern required by storage RLS: {user_id}/{vehicle_id}/{timestamp}.{ext}
     const path = `${userId}/${vehicleId}/${Date.now()}.${ext}`
 
     const { error: uploadError } = await supabase.storage
@@ -45,20 +50,24 @@ export function AttachmentsTab({ vehicleId, userId, attachments }: AttachmentsTa
     if (uploadError) {
       toast.error('Upload failed: ' + uploadError.message)
       setUploading(false)
+      if (fileInputRef.current) fileInputRef.current.value = ''
       return
     }
 
-    const { data: { publicUrl } } = supabase.storage.from('attachments').getPublicUrl(path)
-
+    // Store the storage path, not a URL. The bucket is private; access is via
+    // signed URLs generated on demand — never via getPublicUrl().
     const { error: dbError } = await supabase.from('attachments').insert({
       vehicle_id: vehicleId,
-      file_url: publicUrl,
+      file_url: path,
       file_name: file.name,
       file_type: file.type,
+      file_size: file.size,
       label: label.trim() || null,
     })
 
     if (dbError) {
+      // Roll back the storage upload so we don't leave orphaned files
+      await supabase.storage.from('attachments').remove([path])
       toast.error('Failed to save attachment')
     } else {
       toast.success('File uploaded!')
@@ -69,13 +78,32 @@ export function AttachmentsTab({ vehicleId, userId, attachments }: AttachmentsTa
     if (fileInputRef.current) fileInputRef.current.value = ''
   }
 
+  async function handleView(attachment: Attachment) {
+    setViewingId(attachment.id)
+    // Always generate a fresh signed URL — handles expiry without client-side caching
+    const { data, error } = await supabase.storage
+      .from('attachments')
+      .createSignedUrl(attachment.file_url, SIGNED_URL_EXPIRY_SECONDS)
+    setViewingId(null)
+    if (data?.signedUrl) {
+      window.open(data.signedUrl, '_blank', 'noopener,noreferrer')
+    } else {
+      toast.error('Could not open file' + (error ? ': ' + error.message : ''))
+    }
+  }
+
   async function handleDelete(attachment: Attachment) {
     setDeletingId(attachment.id)
-    const url = new URL(attachment.file_url)
-    const pathParts = url.pathname.split('/attachments/')
-    if (pathParts[1]) {
-      await supabase.storage.from('attachments').remove([pathParts[1]])
+    // file_url is the storage path (e.g. {userId}/{vehicleId}/{ts}.ext)
+    const { error: storageError } = await supabase.storage
+      .from('attachments')
+      .remove([attachment.file_url])
+
+    if (storageError) {
+      // File may already be gone; log and continue to clean up the DB row
+      console.warn('Storage removal warning:', storageError.message)
     }
+
     const { error } = await supabase.from('attachments').delete().eq('id', attachment.id)
     if (error) {
       toast.error('Failed to delete')
@@ -153,14 +181,18 @@ export function AttachmentsTab({ vehicleId, userId, attachments }: AttachmentsTa
                 </p>
               </div>
               <div className="flex items-center gap-1 shrink-0">
-                <a
-                  href={attachment.file_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={cn(buttonVariants({ variant: 'ghost', size: 'icon-sm' }), 'text-muted-foreground hover:text-primary hover:bg-primary/10')}
+                <button
+                  type="button"
+                  onClick={() => handleView(attachment)}
+                  disabled={viewingId === attachment.id}
+                  className={cn(buttonVariants({ variant: 'ghost', size: 'icon-sm' }), 'text-muted-foreground hover:text-primary hover:bg-primary/10 disabled:opacity-50')}
+                  aria-label="Open file"
                 >
-                  <ExternalLink className="h-3.5 w-3.5" />
-                </a>
+                  {viewingId === attachment.id
+                    ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    : <ExternalLink className="h-3.5 w-3.5" />
+                  }
+                </button>
                 <Button
                   variant="ghost"
                   size="icon-sm"
