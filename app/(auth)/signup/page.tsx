@@ -20,6 +20,7 @@ export default function SignupPage() {
   const [name, setName] = useState('')
   const [loading, setLoading] = useState(false)
   const [googleLoading, setGoogleLoading] = useState(false)
+  const [confirmationSent, setConfirmationSent] = useState(false)
 
   async function handleSignup(e: React.FormEvent) {
     e.preventDefault()
@@ -28,7 +29,7 @@ export default function SignupPage() {
       return
     }
     setLoading(true)
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: { data: { full_name: name } },
@@ -36,9 +37,13 @@ export default function SignupPage() {
     if (error) {
       toast.error(error.message)
       setLoading(false)
-    } else {
-      toast.success('Account created! Check your email to confirm.')
+    } else if (data.session) {
+      // Email confirmation disabled — user is immediately active
       router.push('/dashboard')
+    } else {
+      // Email confirmation required — session is null until confirmed
+      setConfirmationSent(true)
+      setLoading(false)
     }
   }
 
@@ -52,6 +57,41 @@ export default function SignupPage() {
       toast.error(error.message)
       setGoogleLoading(false)
     }
+  }
+
+  if (confirmationSent) {
+    return (
+      <main className="min-h-screen flex items-center justify-center px-4 bg-background">
+        <div className="w-full max-w-sm">
+          <div className="flex flex-col items-center mb-8">
+            <Image src="/logo.jpeg" alt="GarageFlo" width={72} height={72} className="rounded-xl mb-3" />
+            <h1 className="text-2xl font-black">
+              <span className="text-foreground">Garage</span>
+              <span className="text-primary">Flo</span>
+            </h1>
+          </div>
+          <Card className="bg-card border-border">
+            <CardHeader>
+              <CardTitle className="text-xl">Check your email</CardTitle>
+              <CardDescription>We sent a confirmation link to <strong>{email}</strong></CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Click the link in the email to activate your account, then come back to sign in.
+              </p>
+            </CardContent>
+            <CardFooter className="justify-center">
+              <p className="text-sm text-muted-foreground">
+                Already confirmed?{' '}
+                <Link href="/login" className="text-primary hover:underline font-medium">
+                  Sign in
+                </Link>
+              </p>
+            </CardFooter>
+          </Card>
+        </div>
+      </main>
+    )
   }
 
   return (

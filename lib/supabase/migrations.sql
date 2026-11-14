@@ -177,15 +177,17 @@ create index if not exists attachments_maintenance_id_idx on attachments(mainten
 -- FUNCTIONS & TRIGGERS
 -- ----------------------------------------------------------------
 
--- Auto-create a garage row for every new Supabase auth user
+-- Auto-create a garage row for every new Supabase auth user.
+-- SET search_path = '' prevents "relation does not exist" in Supabase's
+-- security-hardened environment; public.garages is fully qualified.
 create or replace function create_garage_for_user()
 returns trigger as $$
 begin
-  insert into garages (user_id, name)
+  insert into public.garages (user_id, name)
   values (new.id, 'My Garage');
   return new;
 end;
-$$ language plpgsql security definer;
+$$ language plpgsql security definer set search_path = '';
 
 -- Drop and recreate to avoid duplicate trigger on re-run
 drop trigger if exists on_auth_user_created on auth.users;

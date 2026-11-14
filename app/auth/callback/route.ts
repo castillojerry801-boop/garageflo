@@ -23,7 +23,11 @@ export async function GET(request: NextRequest) {
         },
       }
     )
-    await supabase.auth.exchangeCodeForSession(code)
+    const { error } = await supabase.auth.exchangeCodeForSession(code)
+    if (error) {
+      // Expired or invalid code — send back to login rather than bouncing off /dashboard
+      return NextResponse.redirect(`${origin}/login`)
+    }
   }
 
   return NextResponse.redirect(`${origin}/dashboard`)
