@@ -2,20 +2,26 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse } from 'next/server'
 import { Resend } from 'resend'
 
-const resend = new Resend(process.env.RESEND_API_KEY)
-
 export async function GET(request: Request) {
-  // Verify cron secret to prevent unauthorized calls
   const authHeader = request.headers.get('authorization')
   if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    { cookies: { getAll: () => [], setAll: () => {} } }
-  )
+  if (!process.env.RESEND_API_KEY || process.env.RESEND_API_KEY.startsWith('your_')) {
+    return NextResponse.json({ sent: 0, note: 'Email not configured' })
+  }
+  const resend = new Resend(process.env.RESEND_API_KEY)
+
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+  if (!supabaseUrl || !serviceRoleKey) {
+    return NextResponse.json({ error: 'Server misconfigured' }, { status: 500 })
+  }
+
+  const supabase = createServerClient(supabaseUrl, serviceRoleKey, {
+    cookies: { getAll: () => [], setAll: () => {} },
+  })
 
   const today = new Date()
   const in7Days = new Date(today)
@@ -33,7 +39,7 @@ export async function GET(request: Request) {
       )
     `)
     .eq('is_active', true)
-    .or(`next_due_date.lte.${in7DaysStr}`)
+    .lte('next_due_date', in7DaysStr)
 
   if (!reminders || reminders.length === 0) {
     return NextResponse.json({ sent: 0 })
