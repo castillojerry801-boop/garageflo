@@ -79,7 +79,7 @@ export default async function VehiclePage({ params }: { params: Promise<{ vehicl
       {/* Vehicle header */}
       {vehicle.photo_url ? (
         /* Photo hero */
-        <div className="relative rounded-xl overflow-hidden h-52 border border-border/60">
+        <div className="relative rounded-xl overflow-hidden h-52 border border-border/70">
           <Image src={vehicle.photo_url} alt={vehicle.name} fill className="object-cover" />
           <div
             className="absolute inset-0"
@@ -108,7 +108,7 @@ export default async function VehiclePage({ params }: { params: Promise<{ vehicl
         </div>
       ) : (
         /* Compact profile header */
-        <div className="bg-card border border-border/60 rounded-xl px-5 py-4 flex items-center gap-4">
+        <div className="bg-card border border-border/70 rounded-xl px-5 py-4 flex items-center gap-4">
           <div className="shrink-0 h-10 w-10 rounded-lg bg-secondary/60 border border-border/50 flex items-center justify-center">
             <span className="text-xs font-bold text-muted-foreground/60 uppercase tracking-tight">
               {vehicle.name.trim().split(/\s+/).map((w: string) => w[0]).filter(Boolean).join('').slice(0, 2)}
@@ -135,12 +135,12 @@ export default async function VehiclePage({ params }: { params: Promise<{ vehicl
       )}
 
       {/* Stats strip */}
-      <div className="bg-card border border-border/60 rounded-xl grid grid-cols-3 divide-x divide-border/50 overflow-hidden">
-        <div className="px-4 py-3.5 text-center">
+      <div className="bg-card border border-border/70 rounded-xl grid grid-cols-3 divide-x divide-border/60 overflow-hidden">
+        <div className="px-4 py-4 text-center">
           <p className="text-xl font-bold text-foreground tabular-nums">{(logs || []).length}</p>
-          <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/80 mt-0.5">Services</p>
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mt-0.5">Services</p>
         </div>
-        <div className="px-4 py-3.5 text-center">
+        <div className="px-4 py-4 text-center">
           <p className="text-xl font-bold text-foreground tabular-nums">
             {vehicle.mileage != null
               ? vehicle.mileage.toLocaleString()
@@ -148,31 +148,31 @@ export default async function VehiclePage({ params }: { params: Promise<{ vehicl
               ? vehicle.engine_hours.toLocaleString()
               : '—'}
           </p>
-          <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/80 mt-0.5">
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mt-0.5">
             {vehicle.engine_hours != null && vehicle.mileage == null ? 'Hours' : 'Miles'}
           </p>
         </div>
-        <div className="px-4 py-3.5 text-center">
+        <div className="px-4 py-4 text-center">
           <p className="text-xl font-bold text-foreground tabular-nums">
             ${totalCost > 0 ? totalCost.toLocaleString('en-US', { maximumFractionDigits: 0 }) : '0'}
           </p>
-          <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/80 mt-0.5">Spent</p>
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mt-0.5">Spent</p>
         </div>
       </div>
 
       {/* Tabs */}
       <Tabs defaultValue="history" className="space-y-5">
-        <TabsList className="bg-card border border-border/60 p-1 rounded-xl w-full grid grid-cols-3 h-auto">
+        <TabsList className="bg-card border border-border/70 p-1 rounded-xl w-full grid grid-cols-3 h-auto">
           <TabsTrigger
             value="history"
-            className="rounded-lg py-2 text-sm font-medium text-muted-foreground data-active:bg-primary data-active:text-primary-foreground transition-all"
+            className="rounded-lg py-2 text-sm font-medium text-muted-foreground data-active:bg-primary/15 data-active:text-primary transition-all"
           >
             <Wrench className="h-3.5 w-3.5 mr-1.5 shrink-0" />
             History
           </TabsTrigger>
           <TabsTrigger
             value="reminders"
-            className="rounded-lg py-2 text-sm font-medium text-muted-foreground data-active:bg-primary data-active:text-primary-foreground transition-all"
+            className="rounded-lg py-2 text-sm font-medium text-muted-foreground data-active:bg-primary/15 data-active:text-primary transition-all"
           >
             <Bell className="h-3.5 w-3.5 mr-1.5 shrink-0" />
             Reminders
@@ -184,7 +184,7 @@ export default async function VehiclePage({ params }: { params: Promise<{ vehicl
           </TabsTrigger>
           <TabsTrigger
             value="documents"
-            className="rounded-lg py-2 text-sm font-medium text-muted-foreground data-active:bg-primary data-active:text-primary-foreground transition-all"
+            className="rounded-lg py-2 text-sm font-medium text-muted-foreground data-active:bg-primary/15 data-active:text-primary transition-all"
           >
             <Paperclip className="h-3.5 w-3.5 mr-1.5 shrink-0" />
             Docs
@@ -215,7 +215,7 @@ export default async function VehiclePage({ params }: { params: Promise<{ vehicl
               {(logs || []).map((log: MaintenanceLog) => (
                 <div
                   key={log.id}
-                  className="bg-card border border-border/60 rounded-xl px-4 py-3.5"
+                  className="bg-card border border-border/70 rounded-xl px-4 py-3.5"
                 >
                   <div className="flex items-start justify-between gap-3">
                     <p className="text-sm font-medium text-foreground leading-snug">{log.service_type}</p>

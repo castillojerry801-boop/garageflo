@@ -87,25 +87,25 @@ export default async function DashboardPage() {
 
       {/* Metrics strip — only shown with vehicles */}
       {vehicleCount > 0 && (
-        <div className="bg-card border border-border/60 rounded-xl grid grid-cols-3 divide-x divide-border/50 overflow-hidden">
-          <div className="px-4 py-3.5">
-            <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70">Vehicles</p>
+        <div className="bg-card border border-border/70 rounded-xl grid grid-cols-3 divide-x divide-border/60 overflow-hidden">
+          <div className="px-4 py-4">
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-primary/70">Vehicles</p>
             <p className="text-2xl font-bold text-foreground tabular-nums mt-1">{vehicleCount}</p>
           </div>
-          <div className={cn('px-4 py-3.5 transition-colors', overdueCount > 0 && 'bg-danger/[0.04]')}>
+          <div className={cn('px-4 py-4 transition-colors', overdueCount > 0 && 'bg-danger/[0.06]')}>
             <p className={cn(
               'text-[10px] font-semibold uppercase tracking-widest',
-              overdueCount > 0 ? 'text-danger/60' : 'text-muted-foreground/70'
+              overdueCount > 0 ? 'text-danger/80' : 'text-muted-foreground'
             )}>Overdue</p>
             <p className={cn(
               'text-2xl font-bold tabular-nums mt-1',
               overdueCount > 0 ? 'text-danger' : 'text-foreground'
             )}>{overdueCount}</p>
           </div>
-          <div className={cn('px-4 py-3.5 transition-colors', dueSoonCount > 0 && 'bg-warning/[0.04]')}>
+          <div className={cn('px-4 py-4 transition-colors', dueSoonCount > 0 && 'bg-warning/[0.06]')}>
             <p className={cn(
               'text-[10px] font-semibold uppercase tracking-widest',
-              dueSoonCount > 0 ? 'text-warning/60' : 'text-muted-foreground/70'
+              dueSoonCount > 0 ? 'text-warning/80' : 'text-muted-foreground'
             )}>Due Soon</p>
             <p className={cn(
               'text-2xl font-bold tabular-nums mt-1',
@@ -117,8 +117,8 @@ export default async function DashboardPage() {
 
       {/* Needs attention */}
       {urgentReminders.length > 0 && (
-        <div className="border border-border/60 rounded-xl overflow-hidden">
-          <div className="flex items-center justify-between px-4 py-2.5 border-b border-border/50 bg-secondary/25">
+        <div className="border border-border/70 rounded-xl overflow-hidden">
+          <div className="flex items-center justify-between px-4 py-2.5 border-b border-border/60 bg-secondary/40">
             <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
               Needs Attention
             </span>
@@ -129,7 +129,7 @@ export default async function DashboardPage() {
               {urgentReminders.length} item{urgentReminders.length !== 1 ? 's' : ''}
             </span>
           </div>
-          <div className="divide-y divide-border/40">
+          <div className="divide-y divide-border/50">
             {urgentReminders.slice(0, 5).map((reminder) => (
               <Link
                 key={reminder.id}
@@ -174,7 +174,7 @@ export default async function DashboardPage() {
       {/* Vehicle grid */}
       {vehicleCount > 0 ? (
         <div>
-          <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70 mb-3">
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-primary/60 mb-3">
             {vehicleCount} {vehicleCount === 1 ? 'Vehicle' : 'Vehicles'}
           </p>
           <div className={cn(

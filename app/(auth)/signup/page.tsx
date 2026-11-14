@@ -64,7 +64,7 @@ export default function SignupPage() {
       <main className="min-h-screen flex items-center justify-center px-4 bg-background">
         <div className="w-full max-w-sm">
           <div className="flex flex-col items-center mb-8">
-            <Image src="/logo.jpeg" alt="GarageFlo" width={72} height={72} className="rounded-xl mb-3" />
+            <Image src="/logo.jpeg" alt="GarageFlo" width={72} height={72} priority className="rounded-xl mb-3" />
             <h1 className="text-2xl font-black">
               <span className="text-foreground">Garage</span>
               <span className="text-primary">Flo</span>
@@ -98,7 +98,7 @@ export default function SignupPage() {
     <main className="min-h-screen flex items-center justify-center px-4 bg-background">
       <div className="w-full max-w-sm">
         <div className="flex flex-col items-center mb-8">
-          <Image src="/logo.jpeg" alt="GarageFlo" width={72} height={72} className="rounded-xl mb-3" />
+          <Image src="/logo.jpeg" alt="GarageFlo" width={72} height={72} priority className="rounded-xl mb-3" />
           <h1 className="text-2xl font-black">
             <span className="text-foreground">Garage</span>
             <span className="text-primary">Flo</span>

@@ -48,77 +48,77 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
-/* GarageFlo Brand — dark mode default */
+/* GarageFlo Brand — Navy + Graphite + Electric Blue */
 :root {
-  --background: #1a1d2e;
-  --foreground: #f8f9fa;
-  --card: #232638;
-  --card-foreground: #f8f9fa;
-  --popover: #232638;
-  --popover-foreground: #f8f9fa;
-  --primary: #00aeef;
-  --primary-foreground: #0a0c14;
-  --secondary: #2d3142;
-  --secondary-foreground: #f8f9fa;
-  --muted: #2d3142;
-  --muted-foreground: #9ca3af;
-  --accent: #00aeef;
-  --accent-foreground: #0a0c14;
+  --background: #191E2D;
+  --foreground: #F7F9FC;
+  --card: #292B33;
+  --card-foreground: #F7F9FC;
+  --popover: #292B33;
+  --popover-foreground: #F7F9FC;
+  --primary: #00B8F5;
+  --primary-foreground: #061018;
+  --secondary: #343741;
+  --secondary-foreground: #F7F9FC;
+  --muted: #343741;
+  --muted-foreground: #B8C0CC;
+  --accent: #00B8F5;
+  --accent-foreground: #061018;
   --destructive: #ef4444;
-  --border: #353a52;
-  --input: #2d3142;
-  --ring: #00aeef;
-  --chart-1: #00aeef;
+  --border: #484D59;
+  --input: #343741;
+  --ring: #00B8F5;
+  --chart-1: #00B8F5;
   --chart-2: #22c55e;
   --chart-3: #f59e0b;
   --chart-4: #ef4444;
   --chart-5: #a855f7;
   --radius: 0.5rem;
-  --sidebar: #232638;
-  --sidebar-foreground: #f8f9fa;
-  --sidebar-primary: #00aeef;
-  --sidebar-primary-foreground: #0a0c14;
-  --sidebar-accent: #2d3142;
-  --sidebar-accent-foreground: #f8f9fa;
-  --sidebar-border: #353a52;
-  --sidebar-ring: #00aeef;
+  --sidebar: #292B33;
+  --sidebar-foreground: #F7F9FC;
+  --sidebar-primary: #00B8F5;
+  --sidebar-primary-foreground: #061018;
+  --sidebar-accent: #343741;
+  --sidebar-accent-foreground: #F7F9FC;
+  --sidebar-border: #484D59;
+  --sidebar-ring: #00B8F5;
   --warning: #f59e0b;
   --success: #22c55e;
   --danger: #ef4444;
 }
 
 .dark {
-  --background: #1a1d2e;
-  --foreground: #f8f9fa;
-  --card: #232638;
-  --card-foreground: #f8f9fa;
-  --popover: #232638;
-  --popover-foreground: #f8f9fa;
-  --primary: #00aeef;
-  --primary-foreground: #0a0c14;
-  --secondary: #2d3142;
-  --secondary-foreground: #f8f9fa;
-  --muted: #2d3142;
-  --muted-foreground: #9ca3af;
-  --accent: #00aeef;
-  --accent-foreground: #0a0c14;
+  --background: #191E2D;
+  --foreground: #F7F9FC;
+  --card: #292B33;
+  --card-foreground: #F7F9FC;
+  --popover: #292B33;
+  --popover-foreground: #F7F9FC;
+  --primary: #00B8F5;
+  --primary-foreground: #061018;
+  --secondary: #343741;
+  --secondary-foreground: #F7F9FC;
+  --muted: #343741;
+  --muted-foreground: #B8C0CC;
+  --accent: #00B8F5;
+  --accent-foreground: #061018;
   --destructive: #ef4444;
-  --border: #353a52;
-  --input: #2d3142;
-  --ring: #00aeef;
-  --chart-1: #00aeef;
+  --border: #484D59;
+  --input: #343741;
+  --ring: #00B8F5;
+  --chart-1: #00B8F5;
   --chart-2: #22c55e;
   --chart-3: #f59e0b;
   --chart-4: #ef4444;
   --chart-5: #a855f7;
-  --sidebar: #232638;
-  --sidebar-foreground: #f8f9fa;
-  --sidebar-primary: #00aeef;
-  --sidebar-primary-foreground: #0a0c14;
-  --sidebar-accent: #2d3142;
-  --sidebar-accent-foreground: #f8f9fa;
-  --sidebar-border: #353a52;
-  --sidebar-ring: #00aeef;
+  --sidebar: #292B33;
+  --sidebar-foreground: #F7F9FC;
+  --sidebar-primary: #00B8F5;
+  --sidebar-primary-foreground: #061018;
+  --sidebar-accent: #343741;
+  --sidebar-accent-foreground: #F7F9FC;
+  --sidebar-border: #484D59;
+  --sidebar-ring: #00B8F5;
 }
 
 @layer base {
@@ -133,10 +133,14 @@
     font-family: inherit;
     @apply bg-background text-foreground;
   }
+  /* Subtle elevation on card surfaces */
+  .bg-card {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.28), 0 1px 2px rgba(0, 0, 0, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  }
 }
 
 /* Custom scrollbar */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-track { background: #1a1d2e; }
-::-webkit-scrollbar-thumb { background: #353a52; border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: #00aeef; }
+::-webkit-scrollbar-track { background: #191E2D; }
+::-webkit-scrollbar-thumb { background: #484D59; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #00B8F5; }

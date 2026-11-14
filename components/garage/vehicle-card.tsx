@@ -30,9 +30,9 @@ export function VehicleCard({ vehicle, reminders = [] }: VehicleCardProps) {
     : null
 
   const sc = {
-    overdue:  { label: 'Overdue',    dot: 'bg-danger',  text: 'text-danger',  border: 'border-danger/40' },
-    due_soon: { label: 'Due Soon',   dot: 'bg-warning', text: 'text-warning', border: 'border-warning/35' },
-    ok:       { label: 'Up to Date', dot: 'bg-success', text: 'text-success/80', border: 'border-border/60' },
+    overdue:  { label: 'Overdue',    dot: 'bg-danger',  text: 'text-danger',  border: 'border-danger/50' },
+    due_soon: { label: 'Due Soon',   dot: 'bg-warning', text: 'text-warning', border: 'border-warning/45' },
+    ok:       { label: 'Up to Date', dot: 'bg-success', text: 'text-success', border: 'border-border' },
   }[worstStatus]
 
   return (
@@ -42,8 +42,8 @@ export function VehicleCard({ vehicle, reminders = [] }: VehicleCardProps) {
     >
       <article className={cn(
         'relative bg-card rounded-xl overflow-hidden border transition-all duration-150',
-        'group-hover:shadow-lg group-hover:shadow-black/30 group-hover:-translate-y-px',
-        hasUrgent ? sc.border : 'border-border/60 group-hover:border-border',
+        'group-hover:shadow-xl group-hover:shadow-black/40 group-hover:-translate-y-0.5',
+        hasUrgent ? sc.border : 'border-border/70 group-hover:border-border',
       )}>
         {/* 2px status accent at top */}
         {hasUrgent && (
@@ -53,7 +53,7 @@ export function VehicleCard({ vehicle, reminders = [] }: VehicleCardProps) {
           )} />
         )}
 
-        {/* Photo — rendered only when a photo exists */}
+        {/* Photo */}
         {hasPhoto && (
           <div className="relative h-[144px] overflow-hidden">
             <Image
@@ -63,15 +63,13 @@ export function VehicleCard({ vehicle, reminders = [] }: VehicleCardProps) {
               sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
               className="object-cover transition-transform duration-300 group-hover:scale-[1.02]"
             />
-            {/* Gradient scrim for readability */}
             <div className="absolute bottom-0 inset-x-0 h-10 bg-gradient-to-t from-black/50 to-transparent" />
-            {/* Status badge on photo */}
             {hasUrgent && (
               <div className={cn(
                 'absolute top-2.5 right-2.5 inline-flex items-center gap-1.5 text-[11px] font-semibold px-2 py-1 rounded border backdrop-blur-sm',
                 worstStatus === 'overdue'
-                  ? 'bg-black/60 text-danger border-danger/40'
-                  : 'bg-black/60 text-warning border-warning/35'
+                  ? 'bg-black/60 text-danger border-danger/50'
+                  : 'bg-black/60 text-warning border-warning/45'
               )}>
                 <span className={cn('w-1.5 h-1.5 rounded-full inline-block', sc.dot)} />
                 {sc.label}
@@ -96,19 +94,19 @@ export function VehicleCard({ vehicle, reminders = [] }: VehicleCardProps) {
               </p>
             </div>
             {subtitle && (
-              <span className="text-[10px] font-medium text-muted-foreground/70 uppercase tracking-wide shrink-0 mt-0.5">
+              <span className="text-[10px] font-semibold text-primary/70 uppercase tracking-widest shrink-0 mt-0.5">
                 {typeLabel}
               </span>
             )}
           </div>
 
           {/* Mileage + status */}
-          <div className="flex items-center justify-between gap-2 mt-3 pt-2.5 border-t border-border/40">
-            <span className="text-xs text-muted-foreground tabular-nums">
+          <div className="flex items-center justify-between gap-2 mt-3 pt-2.5 border-t border-border/50">
+            <span className="text-xs font-medium text-muted-foreground tabular-nums">
               {mileageText ?? 'No mileage recorded'}
             </span>
             {hasReminders && (
-              <span className={cn('inline-flex items-center gap-1.5 text-[11px] font-medium', sc.text)}>
+              <span className={cn('inline-flex items-center gap-1.5 text-[11px] font-semibold', sc.text)}>
                 <span className={cn('w-1.5 h-1.5 rounded-full inline-block shrink-0', sc.dot)} />
                 {sc.label}
               </span>

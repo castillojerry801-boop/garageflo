@@ -1,0 +1,27 @@
+<!DOCTYPE html><html><head>
+<style>
+body { background: #1a1d2e; margin: 0; padding: 40px; font-family: sans-serif; color: #f8f9fa; }
+h3 { color: #9ca3af; font-size: 12px; letter-spacing: .1em; text-transform: uppercase; margin: 0 0 8px; }
+.row { display: flex; gap: 40px; align-items: flex-start; flex-wrap: wrap; margin-bottom: 40px; }
+.box { text-align: center; }
+img { display: block; background: transparent; }
+/* show checkerboard for transparency check */
+.checker { background: repeating-conic-gradient(#333 0% 25%, #555 0% 50%) 0 0/20px 20px; }
+</style></head><body>
+<h3>Transparency check (checkerboard)</h3>
+<div class="row">
+  <div class="box"><p style="font-size:11px;color:#666">Full size 30%</p>
+    <img src="/garage-symbol.png" width="376" class="checker"></div>
+</div>
+<h3>On dark navy at various opacities</h3>
+<div class="row">
+  <div class="box"><p style="font-size:11px;color:#666">3% opacity (mobile)</p>
+    <img src="/garage-symbol.png" width="300" style="opacity:0.03"></div>
+  <div class="box"><p style="font-size:11px;color:#666">5% opacity (desktop)</p>
+    <img src="/garage-symbol.png" width="300" style="opacity:0.05"></div>
+  <div class="box"><p style="font-size:11px;color:#666">10% (reference)</p>
+    <img src="/garage-symbol.png" width="300" style="opacity:0.10"></div>
+  <div class="box"><p style="font-size:11px;color:#666">20% (reference)</p>
+    <img src="/garage-symbol.png" width="300" style="opacity:0.20"></div>
+</div>
+</body></html>
