@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import {
@@ -28,9 +28,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { VehicleCombobox, type ComboboxItem } from '@/components/ui/vehicle-combobox'
 import { toast } from 'sonner'
 import { Plus, Loader2 } from 'lucide-react'
 import { validateVin, HIGHWAY_VIN_TYPES } from '@/lib/vin'
+import { VPIC_MAKE_TYPES } from '@/lib/catalog/vpic'
 
 interface AddVehicleDialogProps {
   garageId: string
@@ -58,6 +60,61 @@ export function AddVehicleDialog({ garageId, userId }: AddVehicleDialogProps) {
     notes: '',
   })
 
+  const [makes, setMakes] = useState<ComboboxItem[]>([])
+  const [models, setModels] = useState<ComboboxItem[]>([])
+  const [makesLoading, setMakesLoading] = useState(false)
+  const [modelsLoading, setModelsLoading] = useState(false)
+
+  const isCatalogType = (t: VehicleType) => t in VPIC_MAKE_TYPES
+
+  const loadMakes = useCallback(async (vehicleType: VehicleType) => {
+    if (!isCatalogType(vehicleType)) {
+      setMakes([])
+      return
+    }
+    setMakesLoading(true)
+    try {
+      const res = await fetch(`/api/catalog/makes?vehicleType=${encodeURIComponent(vehicleType)}`)
+      const data = await res.json()
+      setMakes(Array.isArray(data.makes) ? data.makes : [])
+    } catch {
+      setMakes([])
+    } finally {
+      setMakesLoading(false)
+    }
+  }, [])
+
+  const loadModels = useCallback(async (make: string, year: string) => {
+    if (!make || !year) {
+      setModels([])
+      return
+    }
+    setModelsLoading(true)
+    try {
+      const res = await fetch(`/api/catalog/models?make=${encodeURIComponent(make)}&year=${encodeURIComponent(year)}`)
+      const data = await res.json()
+      setModels(Array.isArray(data.models) ? data.models : [])
+    } catch {
+      setModels([])
+    } finally {
+      setModelsLoading(false)
+    }
+  }, [])
+
+  // Load makes when dialog opens.
+  useEffect(() => {
+    if (open) loadMakes(form.type as VehicleType)
+  }, [open]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Load models when make+year are both set.
+  useEffect(() => {
+    if (open && form.make && form.year) {
+      loadModels(form.make, form.year)
+    } else {
+      setModels([])
+    }
+  }, [form.make, form.year, open]) // eslint-disable-line react-hooks/exhaustive-deps
+
   function handleChange(field: string, value: string) {
     setForm((prev) => ({ ...prev, [field]: value }))
   }
@@ -68,7 +125,26 @@ export function AddVehicleDialog({ garageId, userId }: AddVehicleDialogProps) {
       ...prev,
       type: t,
       tracking_method: TRACKING_METHOD_DEFAULTS[t],
+      make: '',
+      model: '',
     }))
+    setMakes([])
+    setModels([])
+    loadMakes(t)
+  }
+
+  function handleMakeChange(value: string) {
+    setForm((prev) => ({ ...prev, make: value, model: '' }))
+    setModels([])
+  }
+
+  function handleModelChange(value: string) {
+    setForm((prev) => ({ ...prev, model: value }))
+  }
+
+  function handleYearChange(value: string) {
+    setForm((prev) => ({ ...prev, year: value, model: '' }))
+    setModels([])
   }
 
   const showMileage = form.tracking_method === 'mileage' || form.tracking_method === 'both'
@@ -181,30 +257,62 @@ export function AddVehicleDialog({ garageId, userId }: AddVehicleDialogProps) {
                 min="1900"
                 max={new Date().getFullYear() + 2}
                 value={form.year}
-                onChange={(e) => handleChange('year', e.target.value)}
+                onChange={(e) => handleYearChange(e.target.value)}
                 className="bg-input border-border"
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="make">Make</Label>
-              <Input
-                id="make"
-                placeholder="Ford"
-                value={form.make}
-                onChange={(e) => handleChange('make', e.target.value)}
-                className="bg-input border-border"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="model">Model</Label>
-              <Input
-                id="model"
-                placeholder="F-150"
-                value={form.model}
-                onChange={(e) => handleChange('model', e.target.value)}
-                className="bg-input border-border"
-              />
-            </div>
+            {isCatalogType(form.type as VehicleType) ? (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="add-make">Make</Label>
+                  <VehicleCombobox
+                    id="add-make"
+                    items={makes}
+                    value={form.make}
+                    onChange={handleMakeChange}
+                    placeholder="Ford"
+                    loading={makesLoading}
+                    allowManual
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="add-model">Model</Label>
+                  <VehicleCombobox
+                    id="add-model"
+                    items={models}
+                    value={form.model}
+                    onChange={handleModelChange}
+                    placeholder={!form.make ? 'Set make first' : 'F-150'}
+                    loading={modelsLoading}
+                    disabled={!form.make}
+                    allowManual
+                  />
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="make">Make</Label>
+                  <Input
+                    id="make"
+                    placeholder="Arctic Cat"
+                    value={form.make}
+                    onChange={(e) => handleChange('make', e.target.value)}
+                    className="bg-input border-border"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="model">Model</Label>
+                  <Input
+                    id="model"
+                    placeholder="Model"
+                    value={form.model}
+                    onChange={(e) => handleChange('model', e.target.value)}
+                    className="bg-input border-border"
+                  />
+                </div>
+              </>
+            )}
           </div>
 
           {/* VIN / Serial ID — optional, type-aware */}
