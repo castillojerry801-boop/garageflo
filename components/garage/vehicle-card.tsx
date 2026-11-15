@@ -13,7 +13,7 @@ export function VehicleCard({ vehicle, reminders = [] }: VehicleCardProps) {
 
   const STATUS_RANK: Record<ReminderStatus, number> = { ok: 0, approaching: 1, due: 2, overdue: 3 }
   const worstStatus = reminders.reduce<ReminderStatus>((worst, r) => {
-    const s = getReminderStatus(r, vehicle.mileage)
+    const s = getReminderStatus(r, vehicle.mileage, vehicle.engine_hours)
     return STATUS_RANK[s] > STATUS_RANK[worst] ? s : worst
   }, 'ok')
 

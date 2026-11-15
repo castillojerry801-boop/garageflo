@@ -41,6 +41,7 @@ function formFromLog(log: MaintenanceLog) {
     custom_service: inQuick ? '' : log.service_type,
     performed_at: log.performed_at,
     mileage_at_service: log.mileage_at_service?.toString() ?? '',
+    hours_at_service: log.hours_at_service?.toString() ?? '',
     cost: log.cost?.toString() ?? '',
     notes: log.notes ?? '',
   }
@@ -79,6 +80,7 @@ export function EditLogDialog({ log }: EditLogDialogProps) {
         service_type: serviceType,
         performed_at: form.performed_at,
         mileage_at_service: form.mileage_at_service ? parseInt(form.mileage_at_service) : null,
+        hours_at_service: form.hours_at_service ? parseFloat(form.hours_at_service) : null,
         cost: form.cost ? parseFloat(form.cost) : null,
         notes: form.notes.trim() || null,
       })
@@ -150,7 +152,7 @@ export function EditLogDialog({ log }: EditLogDialogProps) {
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-3 gap-3">
             <div className="space-y-1.5">
               <Label htmlFor="el-mileage" className="text-xs text-muted-foreground">Mileage</Label>
               <Input
@@ -160,6 +162,19 @@ export function EditLogDialog({ log }: EditLogDialogProps) {
                 min="0"
                 value={form.mileage_at_service}
                 onChange={(e) => handleChange('mileage_at_service', e.target.value)}
+                className="bg-input border-border"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="el-hours" className="text-xs text-muted-foreground">Eng. Hours</Label>
+              <Input
+                id="el-hours"
+                type="number"
+                placeholder="250.5"
+                min="0"
+                step="0.1"
+                value={form.hours_at_service}
+                onChange={(e) => handleChange('hours_at_service', e.target.value)}
                 className="bg-input border-border"
               />
             </div>

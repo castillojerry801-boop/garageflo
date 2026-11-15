@@ -56,7 +56,7 @@ export default async function DashboardPage() {
   const urgentReminders = (allReminders || [])
     .map((r: Reminder) => {
       const vehicle = (vehicles || []).find((v: Vehicle) => v.id === r.vehicle_id)
-      const status = getReminderStatus(r, vehicle?.mileage)
+      const status = getReminderStatus(r, vehicle?.mileage, vehicle?.engine_hours)
       return { ...r, status, vehicle }
     })
     .filter(r => r.status !== 'ok')

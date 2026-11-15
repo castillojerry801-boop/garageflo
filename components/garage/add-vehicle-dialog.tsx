@@ -3,7 +3,13 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { VEHICLE_TYPE_LABELS, VehicleType } from '@/types'
+import {
+  VEHICLE_TYPE_LABELS,
+  TRACKING_METHOD_DEFAULTS,
+  TRACKING_METHOD_LABELS,
+  type VehicleType,
+  type TrackingMethod,
+} from '@/types'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -30,6 +36,8 @@ interface AddVehicleDialogProps {
   userId: string
 }
 
+const DEFAULT_TYPE: VehicleType = 'car'
+
 export function AddVehicleDialog({ garageId, userId }: AddVehicleDialogProps) {
   const router = useRouter()
   const supabase = createClient()
@@ -37,11 +45,13 @@ export function AddVehicleDialog({ garageId, userId }: AddVehicleDialogProps) {
   const [loading, setLoading] = useState(false)
   const [form, setForm] = useState({
     name: '',
-    type: 'car' as VehicleType,
+    type: DEFAULT_TYPE,
+    tracking_method: TRACKING_METHOD_DEFAULTS[DEFAULT_TYPE] as TrackingMethod,
     year: '',
     make: '',
     model: '',
     mileage: '',
+    engine_hours: '',
     color: '',
     notes: '',
   })
@@ -49,6 +59,18 @@ export function AddVehicleDialog({ garageId, userId }: AddVehicleDialogProps) {
   function handleChange(field: string, value: string) {
     setForm((prev) => ({ ...prev, [field]: value }))
   }
+
+  function handleTypeChange(newType: string) {
+    const t = newType as VehicleType
+    setForm((prev) => ({
+      ...prev,
+      type: t,
+      tracking_method: TRACKING_METHOD_DEFAULTS[t],
+    }))
+  }
+
+  const showMileage = form.tracking_method === 'mileage' || form.tracking_method === 'both'
+  const showHours = form.tracking_method === 'hours' || form.tracking_method === 'both'
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -62,11 +84,13 @@ export function AddVehicleDialog({ garageId, userId }: AddVehicleDialogProps) {
       garage_id: garageId,
       user_id: userId,
       type: form.type,
+      tracking_method: form.tracking_method,
       name: form.name.trim(),
       year: form.year ? parseInt(form.year) : null,
       make: form.make.trim() || null,
       model: form.model.trim() || null,
-      mileage: form.mileage ? parseInt(form.mileage) : null,
+      mileage: showMileage && form.mileage ? parseInt(form.mileage) : null,
+      engine_hours: showHours && form.engine_hours ? parseFloat(form.engine_hours) : null,
       color: form.color.trim() || null,
       notes: form.notes.trim() || null,
     })
@@ -77,7 +101,11 @@ export function AddVehicleDialog({ garageId, userId }: AddVehicleDialogProps) {
     } else {
       toast.success(`${form.name} added to your garage!`)
       setOpen(false)
-      setForm({ name: '', type: 'car', year: '', make: '', model: '', mileage: '', color: '', notes: '' })
+      setForm({
+        name: '', type: DEFAULT_TYPE,
+        tracking_method: TRACKING_METHOD_DEFAULTS[DEFAULT_TYPE],
+        year: '', make: '', model: '', mileage: '', engine_hours: '', color: '', notes: '',
+      })
       router.refresh()
     }
     setLoading(false)
@@ -110,12 +138,30 @@ export function AddVehicleDialog({ garageId, userId }: AddVehicleDialogProps) {
 
           <div className="space-y-2">
             <Label>Type</Label>
-            <Select value={form.type} onValueChange={(v) => handleChange('type', v ?? 'car')}>
+            <Select value={form.type} onValueChange={(v) => v && handleTypeChange(v)}>
               <SelectTrigger className="bg-input border-border w-full">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent className="bg-card border-border">
                 {Object.entries(VEHICLE_TYPE_LABELS).map(([value, label]) => (
+                  <SelectItem key={value} value={value}>{label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Tracking method — user-overridable, defaults from type */}
+          <div className="space-y-2">
+            <Label>Track By</Label>
+            <Select
+              value={form.tracking_method}
+              onValueChange={(v) => v && handleChange('tracking_method', v)}
+            >
+              <SelectTrigger className="bg-input border-border w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="bg-card border-border">
+                {Object.entries(TRACKING_METHOD_LABELS).map(([value, label]) => (
                   <SelectItem key={value} value={value}>{label}</SelectItem>
                 ))}
               </SelectContent>
@@ -158,20 +204,38 @@ export function AddVehicleDialog({ garageId, userId }: AddVehicleDialogProps) {
             </div>
           </div>
 
+          {/* Usage readings — shown conditionally */}
           <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-2">
-              <Label htmlFor="mileage">Mileage</Label>
-              <Input
-                id="mileage"
-                type="number"
-                placeholder="45000"
-                min="0"
-                value={form.mileage}
-                onChange={(e) => handleChange('mileage', e.target.value)}
-                className="bg-input border-border"
-              />
-            </div>
-            <div className="space-y-2">
+            {showMileage && (
+              <div className="space-y-2">
+                <Label htmlFor="mileage">Mileage</Label>
+                <Input
+                  id="mileage"
+                  type="number"
+                  placeholder="45000"
+                  min="0"
+                  value={form.mileage}
+                  onChange={(e) => handleChange('mileage', e.target.value)}
+                  className="bg-input border-border"
+                />
+              </div>
+            )}
+            {showHours && (
+              <div className="space-y-2">
+                <Label htmlFor="engine_hours">Engine Hours</Label>
+                <Input
+                  id="engine_hours"
+                  type="number"
+                  placeholder="250.5"
+                  min="0"
+                  step="0.1"
+                  value={form.engine_hours}
+                  onChange={(e) => handleChange('engine_hours', e.target.value)}
+                  className="bg-input border-border"
+                />
+              </div>
+            )}
+            <div className={showMileage || showHours ? 'space-y-2' : 'col-span-2 space-y-2'}>
               <Label htmlFor="color">Color</Label>
               <Input
                 id="color"

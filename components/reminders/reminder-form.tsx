@@ -39,6 +39,12 @@ export function ReminderForm({ vehicleId }: ReminderFormProps) {
     custom_service: '',
     next_due_date: '',
     next_due_mileage: '',
+    next_due_hours: '',
+    interval_months: '',
+    interval_miles: '',
+    interval_hours: '',
+    notify_miles_before: '',
+    notify_hours_before: '',
   })
 
   function handleChange(field: string, value: string) {
@@ -52,8 +58,8 @@ export function ReminderForm({ vehicleId }: ReminderFormProps) {
       toast.error('Service type is required')
       return
     }
-    if (!form.next_due_date && !form.next_due_mileage) {
-      toast.error('Set a due date or mileage')
+    if (!form.next_due_date && !form.next_due_mileage && !form.next_due_hours) {
+      toast.error('Set a due date, mileage, or engine hours')
       return
     }
     setLoading(true)
@@ -63,6 +69,12 @@ export function ReminderForm({ vehicleId }: ReminderFormProps) {
       service_type: serviceType.trim(),
       next_due_date: form.next_due_date || null,
       next_due_mileage: form.next_due_mileage ? parseInt(form.next_due_mileage) : null,
+      next_due_hours: form.next_due_hours ? parseFloat(form.next_due_hours) : null,
+      interval_months: form.interval_months ? parseInt(form.interval_months) : null,
+      interval_miles: form.interval_miles ? parseInt(form.interval_miles) : null,
+      interval_hours: form.interval_hours ? parseFloat(form.interval_hours) : null,
+      notify_miles_before: form.notify_miles_before ? parseInt(form.notify_miles_before) : null,
+      notify_hours_before: form.notify_hours_before ? parseFloat(form.notify_hours_before) : null,
       is_active: true,
     })
 
@@ -71,7 +83,12 @@ export function ReminderForm({ vehicleId }: ReminderFormProps) {
     } else {
       toast.success('Reminder set!')
       setOpen(false)
-      setForm({ service_type: '', custom_service: '', next_due_date: '', next_due_mileage: '' })
+      setForm({
+        service_type: '', custom_service: '', next_due_date: '',
+        next_due_mileage: '', next_due_hours: '',
+        interval_months: '', interval_miles: '', interval_hours: '',
+        notify_miles_before: '', notify_hours_before: '',
+      })
       router.refresh()
     }
     setLoading(false)
@@ -84,7 +101,7 @@ export function ReminderForm({ vehicleId }: ReminderFormProps) {
         Add Reminder
       </DialogTrigger>
 
-      <DialogContent className="bg-card border-border max-w-md">
+      <DialogContent className="bg-card border-border max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-xl font-bold">Set a Reminder</DialogTitle>
         </DialogHeader>
@@ -112,12 +129,13 @@ export function ReminderForm({ vehicleId }: ReminderFormProps) {
             )}
           </div>
 
-          <p className="text-xs text-muted-foreground">Set a due date, mileage, or both.</p>
+          <p className="text-xs text-muted-foreground">Set any combination of due date, mileage, or engine hours.</p>
 
+          {/* Due thresholds */}
           <div className="space-y-2">
-            <Label htmlFor="next_due_date">Due By Date</Label>
+            <Label htmlFor="rf-next_due_date">Due By Date</Label>
             <Input
-              id="next_due_date"
+              id="rf-next_due_date"
               type="date"
               value={form.next_due_date}
               onChange={(e) => handleChange('next_due_date', e.target.value)}
@@ -126,18 +144,109 @@ export function ReminderForm({ vehicleId }: ReminderFormProps) {
             />
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="next_due_mileage">Due By Mileage</Label>
-            <Input
-              id="next_due_mileage"
-              type="number"
-              placeholder="e.g. 50000"
-              min="0"
-              value={form.next_due_mileage}
-              onChange={(e) => handleChange('next_due_mileage', e.target.value)}
-              className="bg-input border-border"
-            />
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-2">
+              <Label htmlFor="rf-next_due_mileage">Due At Mileage</Label>
+              <Input
+                id="rf-next_due_mileage"
+                type="number"
+                placeholder="e.g. 50000"
+                min="0"
+                value={form.next_due_mileage}
+                onChange={(e) => handleChange('next_due_mileage', e.target.value)}
+                className="bg-input border-border"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="rf-next_due_hours">Due At Hours</Label>
+              <Input
+                id="rf-next_due_hours"
+                type="number"
+                placeholder="e.g. 300"
+                min="0"
+                step="0.1"
+                value={form.next_due_hours}
+                onChange={(e) => handleChange('next_due_hours', e.target.value)}
+                className="bg-input border-border"
+              />
+            </div>
           </div>
+
+          {/* Optional recurring intervals */}
+          <details className="group">
+            <summary className="cursor-pointer text-xs font-medium text-muted-foreground hover:text-foreground transition-colors list-none flex items-center gap-1.5">
+              <span className="group-open:rotate-90 transition-transform inline-block">▶</span>
+              Set recurring intervals (optional)
+            </summary>
+            <div className="space-y-3 mt-3 pl-4 border-l border-border/40">
+              <div className="grid grid-cols-3 gap-2">
+                <div className="space-y-1">
+                  <Label htmlFor="rf-interval_miles" className="text-[11px] text-muted-foreground">Every (mi)</Label>
+                  <Input
+                    id="rf-interval_miles"
+                    type="number"
+                    placeholder="5000"
+                    min="1"
+                    value={form.interval_miles}
+                    onChange={(e) => handleChange('interval_miles', e.target.value)}
+                    className="bg-input border-border h-8 text-xs"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="rf-interval_hours" className="text-[11px] text-muted-foreground">Every (hrs)</Label>
+                  <Input
+                    id="rf-interval_hours"
+                    type="number"
+                    placeholder="100"
+                    min="0.1"
+                    step="0.1"
+                    value={form.interval_hours}
+                    onChange={(e) => handleChange('interval_hours', e.target.value)}
+                    className="bg-input border-border h-8 text-xs"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="rf-interval_months" className="text-[11px] text-muted-foreground">Every (mo)</Label>
+                  <Input
+                    id="rf-interval_months"
+                    type="number"
+                    placeholder="6"
+                    min="1"
+                    value={form.interval_months}
+                    onChange={(e) => handleChange('interval_months', e.target.value)}
+                    className="bg-input border-border h-8 text-xs"
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <Label htmlFor="rf-notify_miles" className="text-[11px] text-muted-foreground">Warn (mi early)</Label>
+                  <Input
+                    id="rf-notify_miles"
+                    type="number"
+                    placeholder="500"
+                    min="0"
+                    value={form.notify_miles_before}
+                    onChange={(e) => handleChange('notify_miles_before', e.target.value)}
+                    className="bg-input border-border h-8 text-xs"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="rf-notify_hours" className="text-[11px] text-muted-foreground">Warn (hrs early)</Label>
+                  <Input
+                    id="rf-notify_hours"
+                    type="number"
+                    placeholder="10"
+                    min="0"
+                    step="0.5"
+                    value={form.notify_hours_before}
+                    onChange={(e) => handleChange('notify_hours_before', e.target.value)}
+                    className="bg-input border-border h-8 text-xs"
+                  />
+                </div>
+              </div>
+            </div>
+          </details>
 
           <div className="flex gap-3 pt-2">
             <Button

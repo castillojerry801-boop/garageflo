@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { getReminderStatus, type Reminder, type ReminderStatus } from '@/types'
 import { Button } from '@/components/ui/button'
-import { AlertTriangle, Clock, CheckCircle, Trash2, Calendar, Gauge } from 'lucide-react'
+import { AlertTriangle, Clock, CheckCircle, Trash2, Calendar, Gauge, Timer } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { EditReminderDialog } from '@/components/reminders/edit-reminder-dialog'
@@ -13,10 +13,11 @@ import { EditReminderDialog } from '@/components/reminders/edit-reminder-dialog'
 interface RemindersTabProps {
   reminders: Reminder[]
   currentMileage: number | null
+  currentHours?: number | null
   vehicleId: string
 }
 
-export function RemindersTab({ reminders, currentMileage }: RemindersTabProps) {
+export function RemindersTab({ reminders, currentMileage, currentHours }: RemindersTabProps) {
   const router = useRouter()
   const supabase = createClient()
   const [deletingId, setDeletingId] = useState<string | null>(null)
@@ -45,7 +46,7 @@ export function RemindersTab({ reminders, currentMileage }: RemindersTabProps) {
   return (
     <div className="space-y-2">
       {reminders.map((reminder) => {
-        const status = getReminderStatus(reminder, currentMileage)
+        const status = getReminderStatus(reminder, currentMileage, currentHours)
         const configs: Record<ReminderStatus, { Icon: React.ElementType; label: string; border: string; iconCls: string; badge: string }> = {
           overdue:    { Icon: AlertTriangle, label: 'Overdue',    border: 'border-danger/35',  iconCls: 'text-danger',     badge: 'bg-danger/10 text-danger border-danger/30' },
           due:        { Icon: AlertTriangle, label: 'Due Now',    border: 'border-danger/35',  iconCls: 'text-danger',     badge: 'bg-danger/10 text-danger border-danger/30' },
@@ -76,6 +77,12 @@ export function RemindersTab({ reminders, currentMileage }: RemindersTabProps) {
                     <span className="flex items-center gap-1 text-xs text-muted-foreground">
                       <Gauge className="h-3 w-3" />
                       {reminder.next_due_mileage.toLocaleString()} mi
+                    </span>
+                  )}
+                  {reminder.next_due_hours != null && (
+                    <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                      <Timer className="h-3 w-3" />
+                      {reminder.next_due_hours.toLocaleString()} hrs
                     </span>
                   )}
                 </div>

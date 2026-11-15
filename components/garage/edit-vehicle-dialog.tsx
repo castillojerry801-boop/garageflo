@@ -3,7 +3,13 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { VEHICLE_TYPE_LABELS, type Vehicle, type VehicleType } from '@/types'
+import {
+  VEHICLE_TYPE_LABELS,
+  TRACKING_METHOD_LABELS,
+  type Vehicle,
+  type VehicleType,
+  type TrackingMethod,
+} from '@/types'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -34,11 +40,14 @@ function formFromVehicle(v: Vehicle) {
   return {
     name: v.name,
     type: v.type as VehicleType,
+    tracking_method: (v.tracking_method ?? 'mileage') as TrackingMethod,
     year: v.year?.toString() ?? '',
     make: v.make ?? '',
     model: v.model ?? '',
     mileage: v.mileage?.toString() ?? '',
     mileage_reading_date: v.mileage_as_of ?? new Date().toISOString().split('T')[0],
+    engine_hours: v.engine_hours?.toString() ?? '',
+    engine_hours_reading_date: v.engine_hours_as_of ?? new Date().toISOString().split('T')[0],
     color: v.color ?? '',
     notes: v.notes ?? '',
   }
@@ -50,21 +59,26 @@ export function EditVehicleDialog({ vehicle }: EditVehicleDialogProps) {
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
   const [confirmingDownward, setConfirmingDownward] = useState(false)
+  const [confirmingDownwardHours, setConfirmingDownwardHours] = useState(false)
   const [form, setForm] = useState(() => formFromVehicle(vehicle))
 
   function handleOpenChange(val: boolean) {
     if (!val) {
       setForm(formFromVehicle(vehicle))
       setConfirmingDownward(false)
+      setConfirmingDownwardHours(false)
     }
     setOpen(val)
   }
 
   function handleChange(field: string, value: string) {
-    // Reset downward confirmation whenever mileage is re-edited.
     if (field === 'mileage') setConfirmingDownward(false)
+    if (field === 'engine_hours') setConfirmingDownwardHours(false)
     setForm((prev) => ({ ...prev, [field]: value }))
   }
+
+  const showMileage = form.tracking_method === 'mileage' || form.tracking_method === 'both'
+  const showHours = form.tracking_method === 'hours' || form.tracking_method === 'both'
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -74,16 +88,30 @@ export function EditVehicleDialog({ vehicle }: EditVehicleDialogProps) {
     }
 
     const newMileage = form.mileage ? parseInt(form.mileage) : null
+    const newHours = form.engine_hours ? parseFloat(form.engine_hours) : null
 
-    // Downward correction of a confirmed reading requires a second submit.
-    const isDecreasingConfirmed =
+    // Mileage downward correction of a confirmed reading requires a second submit.
+    const isDecreasingMileage =
+      showMileage &&
       newMileage !== null &&
       vehicle.mileage !== null &&
       !vehicle.mileage_is_estimated &&
       newMileage < vehicle.mileage
 
-    if (isDecreasingConfirmed && !confirmingDownward) {
+    // Hours downward correction of a confirmed reading requires a second submit.
+    const isDecreasingHours =
+      showHours &&
+      newHours !== null &&
+      vehicle.engine_hours !== null &&
+      !vehicle.engine_hours_is_estimated &&
+      newHours < vehicle.engine_hours
+
+    if (isDecreasingMileage && !confirmingDownward) {
       setConfirmingDownward(true)
+      return
+    }
+    if (isDecreasingHours && !confirmingDownwardHours) {
+      setConfirmingDownwardHours(true)
       return
     }
 
@@ -93,13 +121,17 @@ export function EditVehicleDialog({ vehicle }: EditVehicleDialogProps) {
       .from('vehicles')
       .update({
         type: form.type,
+        tracking_method: form.tracking_method,
         name: form.name.trim(),
         year: form.year ? parseInt(form.year) : null,
         make: form.make.trim() || null,
         model: form.model.trim() || null,
-        mileage: newMileage,
-        mileage_as_of: newMileage !== null ? form.mileage_reading_date : null,
+        mileage: showMileage ? newMileage : null,
+        mileage_as_of: showMileage && newMileage !== null ? form.mileage_reading_date : null,
         mileage_is_estimated: false,
+        engine_hours: showHours ? newHours : null,
+        engine_hours_as_of: showHours && newHours !== null ? form.engine_hours_reading_date : null,
+        engine_hours_is_estimated: false,
         color: form.color.trim() || null,
         notes: form.notes.trim() || null,
       })
@@ -112,6 +144,7 @@ export function EditVehicleDialog({ vehicle }: EditVehicleDialogProps) {
     } else {
       toast.success('Vehicle updated!')
       setConfirmingDownward(false)
+      setConfirmingDownwardHours(false)
       setOpen(false)
       router.refresh()
     }
@@ -158,6 +191,24 @@ export function EditVehicleDialog({ vehicle }: EditVehicleDialogProps) {
             </Select>
           </div>
 
+          {/* Tracking method — user-overridable */}
+          <div className="space-y-2">
+            <Label>Track By</Label>
+            <Select
+              value={form.tracking_method}
+              onValueChange={(v) => v && handleChange('tracking_method', v)}
+            >
+              <SelectTrigger className="bg-input border-border w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="bg-card border-border">
+                {Object.entries(TRACKING_METHOD_LABELS).map(([value, label]) => (
+                  <SelectItem key={value} value={value}>{label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
           <div className="grid grid-cols-3 gap-3">
             <div className="space-y-2">
               <Label htmlFor="ev-year">Year</Label>
@@ -195,7 +246,7 @@ export function EditVehicleDialog({ vehicle }: EditVehicleDialogProps) {
           </div>
 
           {/* Mileage with optional reading date */}
-          <div className="grid grid-cols-2 gap-3">
+          {showMileage && (
             <div className="space-y-2">
               <Label htmlFor="ev-mileage">Mileage</Label>
               <Input
@@ -224,7 +275,62 @@ export function EditVehicleDialog({ vehicle }: EditVehicleDialogProps) {
                   />
                 </div>
               )}
+              {confirmingDownward && (
+                <p className="text-sm text-warning bg-warning/10 border border-warning/30 rounded-lg px-3 py-2.5 leading-relaxed">
+                  This will decrease the confirmed mileage from{' '}
+                  <strong className="text-foreground">{vehicle.mileage?.toLocaleString()} mi</strong> to{' '}
+                  <strong className="text-foreground">
+                    {parseInt(form.mileage).toLocaleString()} mi
+                  </strong>. Click <em>Confirm Reduction</em> to proceed.
+                </p>
+              )}
             </div>
+          )}
+
+          {/* Engine hours with optional reading date */}
+          {showHours && (
+            <div className="space-y-2">
+              <Label htmlFor="ev-hours">Engine Hours</Label>
+              <Input
+                id="ev-hours"
+                type="number"
+                placeholder="250.5"
+                min="0"
+                step="0.1"
+                value={form.engine_hours}
+                onChange={(e) => handleChange('engine_hours', e.target.value)}
+                className={cn(
+                  'bg-input border-border',
+                  confirmingDownwardHours && 'border-warning/60 focus-visible:ring-warning/30'
+                )}
+              />
+              {form.engine_hours && (
+                <div className="space-y-1">
+                  <Label htmlFor="ev-hours-date" className="text-[11px] text-muted-foreground/70">
+                    Reading date
+                  </Label>
+                  <Input
+                    id="ev-hours-date"
+                    type="date"
+                    value={form.engine_hours_reading_date}
+                    onChange={(e) => handleChange('engine_hours_reading_date', e.target.value)}
+                    className="bg-input border-border text-xs h-8"
+                  />
+                </div>
+              )}
+              {confirmingDownwardHours && (
+                <p className="text-sm text-warning bg-warning/10 border border-warning/30 rounded-lg px-3 py-2.5 leading-relaxed">
+                  This will decrease the confirmed hours from{' '}
+                  <strong className="text-foreground">{vehicle.engine_hours?.toLocaleString()} hrs</strong> to{' '}
+                  <strong className="text-foreground">
+                    {parseFloat(form.engine_hours).toLocaleString()} hrs
+                  </strong>. Click <em>Confirm Reduction</em> to proceed.
+                </p>
+              )}
+            </div>
+          )}
+
+          <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
               <Label htmlFor="ev-color">Color</Label>
               <Input
@@ -236,17 +342,6 @@ export function EditVehicleDialog({ vehicle }: EditVehicleDialogProps) {
               />
             </div>
           </div>
-
-          {/* Downward correction warning */}
-          {confirmingDownward && (
-            <div className="text-sm text-warning bg-warning/10 border border-warning/30 rounded-lg px-3 py-2.5 leading-relaxed">
-              This will decrease the confirmed mileage from{' '}
-              <strong className="text-foreground">{vehicle.mileage?.toLocaleString()} mi</strong> to{' '}
-              <strong className="text-foreground">
-                {parseInt(form.mileage).toLocaleString()} mi
-              </strong>. Click <em>Confirm Reduction</em> to proceed.
-            </div>
-          )}
 
           <div className="space-y-2">
             <Label htmlFor="ev-notes">Notes</Label>
@@ -273,14 +368,14 @@ export function EditVehicleDialog({ vehicle }: EditVehicleDialogProps) {
               type="submit"
               className={cn(
                 'flex-1 font-bold',
-                confirmingDownward
+                (confirmingDownward || confirmingDownwardHours)
                   ? 'bg-warning text-black hover:bg-warning/90'
                   : 'bg-primary text-primary-foreground hover:bg-primary/90'
               )}
               disabled={loading}
             >
               {loading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-              {confirmingDownward ? 'Confirm Reduction' : 'Save Changes'}
+              {(confirmingDownward || confirmingDownwardHours) ? 'Confirm Reduction' : 'Save Changes'}
             </Button>
           </div>
         </form>

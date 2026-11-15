@@ -45,12 +45,12 @@ export default async function VehiclePage({ params }: { params: Promise<{ vehicl
 
   const STATUS_RANK: Record<ReminderStatus, number> = { ok: 0, approaching: 1, due: 2, overdue: 3 }
   const worstStatus = (reminders || []).reduce<ReminderStatus>((worst, r: Reminder) => {
-    const s = getReminderStatus(r, vehicle.mileage)
+    const s = getReminderStatus(r, vehicle.mileage, vehicle.engine_hours)
     return STATUS_RANK[s] > STATUS_RANK[worst] ? s : worst
   }, 'ok')
 
   const totalCost = (logs || []).reduce((sum: number, log: MaintenanceLog) => sum + (log.cost || 0), 0)
-  const urgentCount = (reminders || []).filter((r: Reminder) => getReminderStatus(r, vehicle.mileage) !== 'ok').length
+  const urgentCount = (reminders || []).filter((r: Reminder) => getReminderStatus(r, vehicle.mileage, vehicle.engine_hours) !== 'ok').length
   const subtitle = [vehicle.year, vehicle.make, vehicle.model].filter(Boolean).join(' ')
 
   const StatusIcon = worstStatus === 'overdue' || worstStatus === 'due'
@@ -217,7 +217,7 @@ export default async function VehiclePage({ params }: { params: Promise<{ vehicl
                 </p>
               )}
             </div>
-            <LogForm vehicleId={vehicle.id} reminders={reminders || []} />
+            <LogForm vehicleId={vehicle.id} reminders={reminders || []} trackingMethod={vehicle.tracking_method} currentMileage={vehicle.mileage} currentHours={vehicle.engine_hours} />
           </div>
 
           {(logs || []).length === 0 ? (
@@ -274,6 +274,7 @@ export default async function VehiclePage({ params }: { params: Promise<{ vehicl
           <RemindersTab
             reminders={reminders || []}
             currentMileage={vehicle.mileage}
+            currentHours={vehicle.engine_hours}
             vehicleId={vehicle.id}
           />
         </TabsContent>
