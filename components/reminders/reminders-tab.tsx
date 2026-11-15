@@ -64,7 +64,7 @@ export function RemindersTab({ reminders, currentMileage, currentHours }: Remind
             <div className="flex items-start gap-3 min-w-0">
               <cfg.Icon className={cn('h-4 w-4 shrink-0 mt-0.5', cfg.iconCls)} />
               <div className="min-w-0">
-                <p className="text-sm font-medium truncate">{reminder.service_type}</p>
+                <p className="text-sm font-medium break-words leading-snug">{reminder.service_type}</p>
                 <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1">
                   {reminder.next_due_date && (
                     <span className="flex items-center gap-1 text-xs text-muted-foreground">

@@ -157,16 +157,25 @@ export default async function VehiclePage({ params }: { params: Promise<{ vehicl
           <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mt-0.5">Services</p>
         </div>
         <div className="px-4 py-4 text-center">
-          <p className="text-xl font-bold text-foreground tabular-nums">
-            {vehicle.mileage != null
-              ? vehicle.mileage.toLocaleString()
-              : vehicle.engine_hours != null
-              ? vehicle.engine_hours.toLocaleString()
-              : '—'}
-          </p>
-          <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mt-0.5">
-            {vehicle.engine_hours != null && vehicle.mileage == null ? 'Hours' : 'Miles'}
-          </p>
+          {vehicle.tracking_method === 'date' ? (
+            <>
+              <p className="text-xl font-bold text-foreground tabular-nums">{(reminders || []).length}</p>
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mt-0.5">Reminders</p>
+            </>
+          ) : (
+            <>
+              <p className="text-xl font-bold text-foreground tabular-nums">
+                {vehicle.mileage != null
+                  ? vehicle.mileage.toLocaleString()
+                  : vehicle.engine_hours != null
+                  ? vehicle.engine_hours.toLocaleString()
+                  : '—'}
+              </p>
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mt-0.5">
+                {vehicle.engine_hours != null && vehicle.mileage == null ? 'Hours' : 'Miles'}
+              </p>
+            </>
+          )}
         </div>
         <div className="px-4 py-4 text-center">
           <p className="text-xl font-bold text-foreground tabular-nums">

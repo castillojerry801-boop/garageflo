@@ -3,7 +3,7 @@ export const instant = false
 import { connection } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
-import { VehicleCard } from '@/components/garage/vehicle-card'
+import { GarageGrid } from '@/components/garage/garage-grid'
 import { AddVehicleDialog } from '@/components/garage/add-vehicle-dialog'
 import { getReminderStatus, type Reminder, type Vehicle } from '@/types'
 import { formatDateOnly } from '@/lib/utils'
@@ -37,6 +37,7 @@ export default async function DashboardPage() {
     .from('vehicles')
     .select('*')
     .eq('user_id', user.id)
+    .order('sort_order', { ascending: true, nullsFirst: false })
     .order('created_at', { ascending: false })
 
   const { data: allReminders = [] } = await supabase
@@ -65,7 +66,7 @@ export default async function DashboardPage() {
 
   const overdueCount = urgentReminders.filter(r => r.status === 'overdue' || r.status === 'due').length
   const dueSoonCount = urgentReminders.filter(r => r.status === 'approaching').length
-  const vehicleCount = (vehicles || []).length
+  const itemCount = (vehicles || []).length
 
   return (
     <div className="space-y-6">
@@ -83,12 +84,12 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      {/* Metrics strip — only shown with vehicles */}
-      {vehicleCount > 0 && (
+      {/* Metrics strip */}
+      {itemCount > 0 && (
         <div className="bg-card border border-border/70 rounded-xl grid grid-cols-3 divide-x divide-border/60 overflow-hidden">
           <div className="px-4 py-4">
-            <p className="text-[10px] font-semibold uppercase tracking-widest text-primary/70">Vehicles</p>
-            <p className="text-2xl font-bold text-foreground tabular-nums mt-1">{vehicleCount}</p>
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-primary/70">Garage Items</p>
+            <p className="text-2xl font-bold text-foreground tabular-nums mt-1">{itemCount}</p>
           </div>
           <div className={cn('px-4 py-4 transition-colors', overdueCount > 0 && 'bg-danger/[0.06]')}>
             <p className={cn(
@@ -169,30 +170,14 @@ export default async function DashboardPage() {
         </div>
       )}
 
-      {/* Vehicle grid */}
-      {vehicleCount > 0 ? (
-        <div>
-          <p className="text-[10px] font-semibold uppercase tracking-widest text-primary/60 mb-3">
-            {vehicleCount} {vehicleCount === 1 ? 'Vehicle' : 'Vehicles'}
-          </p>
-          <div className={cn(
-              'grid grid-cols-1 gap-4',
-              vehicleCount === 1 ? 'sm:max-w-sm' : 'sm:grid-cols-2 lg:grid-cols-3'
-            )}>
-            {(vehicles || []).map((vehicle: Vehicle) => (
-              <VehicleCard
-                key={vehicle.id}
-                vehicle={vehicle}
-                reminders={remindersByVehicle[vehicle.id] || []}
-              />
-            ))}
-          </div>
-        </div>
+      {/* Garage grid */}
+      {itemCount > 0 ? (
+        <GarageGrid vehicles={vehicles || []} remindersByVehicle={remindersByVehicle} />
       ) : (
         <div className="border border-dashed border-border/50 rounded-xl px-8 py-14 text-center">
-          <p className="text-sm font-semibold text-foreground">No vehicles yet</p>
+          <p className="text-sm font-semibold text-foreground">No items yet</p>
           <p className="text-xs text-muted-foreground mt-1.5">
-            Add your first vehicle to start tracking maintenance.
+            Add your first item to start tracking maintenance.
           </p>
         </div>
       )}

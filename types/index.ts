@@ -88,6 +88,7 @@ export interface Vehicle {
   engine_hours_as_of: string | null
   estimated_annual_mileage: number | null
   estimated_annual_hours: number | null
+  sort_order: number | null
   created_at: string
   updated_at: string
 }

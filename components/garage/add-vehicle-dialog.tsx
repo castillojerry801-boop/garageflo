@@ -115,7 +115,7 @@ export function AddVehicleDialog({ garageId, userId }: AddVehicleDialogProps) {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger className="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-bold text-primary-foreground shadow-lg shadow-primary/20 hover:bg-primary/90 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
         <Plus className="h-4 w-4" />
-        Add Vehicle
+        Add Item
       </DialogTrigger>
 
       <DialogContent className="bg-card border-border max-w-md max-h-[90vh] overflow-y-auto">
