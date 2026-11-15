@@ -30,6 +30,7 @@ import {
 } from '@/components/ui/select'
 import { toast } from 'sonner'
 import { Plus, Loader2 } from 'lucide-react'
+import { validateVin, HIGHWAY_VIN_TYPES } from '@/lib/vin'
 
 interface AddVehicleDialogProps {
   garageId: string
@@ -50,6 +51,7 @@ export function AddVehicleDialog({ garageId, userId }: AddVehicleDialogProps) {
     year: '',
     make: '',
     model: '',
+    vin: '',
     mileage: '',
     engine_hours: '',
     color: '',
@@ -89,6 +91,7 @@ export function AddVehicleDialog({ garageId, userId }: AddVehicleDialogProps) {
       year: form.year ? parseInt(form.year) : null,
       make: form.make.trim() || null,
       model: form.model.trim() || null,
+      vin: form.vin.trim() || null,
       mileage: showMileage && form.mileage ? parseInt(form.mileage) : null,
       engine_hours: showHours && form.engine_hours ? parseFloat(form.engine_hours) : null,
       color: form.color.trim() || null,
@@ -104,7 +107,7 @@ export function AddVehicleDialog({ garageId, userId }: AddVehicleDialogProps) {
       setForm({
         name: '', type: DEFAULT_TYPE,
         tracking_method: TRACKING_METHOD_DEFAULTS[DEFAULT_TYPE],
-        year: '', make: '', model: '', mileage: '', engine_hours: '', color: '', notes: '',
+        year: '', make: '', model: '', vin: '', mileage: '', engine_hours: '', color: '', notes: '',
       })
       router.refresh()
     }
@@ -203,6 +206,45 @@ export function AddVehicleDialog({ garageId, userId }: AddVehicleDialogProps) {
               />
             </div>
           </div>
+
+          {/* VIN / Serial ID — optional, type-aware */}
+          {(() => {
+            const isHighway = HIGHWAY_VIN_TYPES.has(form.type)
+            const vinValidation = form.vin.trim() ? validateVin(form.vin, form.type) : null
+            return (
+              <div className="space-y-1.5">
+                <Label htmlFor="add-vin">
+                  {isHighway ? 'VIN' : 'Serial / ID Number'}
+                </Label>
+                <Input
+                  id="add-vin"
+                  placeholder={isHighway ? 'e.g. 1HGBH41JXMN109186' : 'e.g. M17AH1234A56'}
+                  value={form.vin}
+                  onChange={(e) => handleChange('vin', e.target.value.toUpperCase())}
+                  className="bg-input border-border tracking-wider"
+                  autoComplete="off"
+                />
+                <p className="text-[11px] text-muted-foreground">
+                  {isHighway
+                    ? 'Optional — standard VINs are 17 characters. Used only for the official NHTSA recall lookup.'
+                    : 'Optional — may help verify recall eligibility with the manufacturer.'}
+                </p>
+                {vinValidation?.state === 'nonstandard' && (
+                  <p className="text-[11px] text-warning/80 leading-relaxed">
+                    Standard VINs are 17 characters. If this is an older vehicle or uses a
+                    different format, it will be saved as entered.
+                  </p>
+                )}
+                {vinValidation?.state === 'invalid_chars' && (
+                  <p className="text-[11px] text-danger/80 leading-relaxed">
+                    {vinValidation.invalidChars
+                      ? `VINs cannot contain ${vinValidation.invalidChars} — these letters are excluded to avoid confusion with 1 and 0.`
+                      : 'This does not appear to be a valid VIN. Standard VINs use letters A–H, J–N, P–R, Z and digits 0–9.'}
+                  </p>
+                )}
+              </div>
+            )
+          })()}
 
           {/* Usage readings — shown conditionally */}
           <div className="grid grid-cols-2 gap-3">

@@ -7,6 +7,7 @@ import {
   ExternalLink, Info, ChevronDown, ChevronUp,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { resolveNhtsaVin } from '@/lib/vin'
 import type { VehicleType } from '@/types'
 import type { RecallsApiResponse, RecallResult, ProviderResult } from '@/lib/recalls/types'
 
@@ -92,14 +93,74 @@ function RecallCard({ recall }: { recall: RecallResult }) {
   )
 }
 
+// Disclosure card shown in the done state before provider sections.
+// NHTSA and CPSC receive distinct text because eligibility works differently.
+function RecallDisclosureCard({
+  hasNhtsa,
+  hasCpsc,
+  vin,
+}: {
+  hasNhtsa: boolean
+  hasCpsc: boolean
+  vin: string | null
+}) {
+  return (
+    <div className="rounded-xl border border-border/60 bg-secondary/20 px-4 py-4">
+      <div className="flex items-start gap-2.5">
+        <Info className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+        <div className="space-y-3 min-w-0">
+          {hasNhtsa && (
+            <div className="space-y-1.5">
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                GarageFlo displays recalls that may apply to your vehicle&apos;s year, make, and model.
+                These results may not include every recall affecting your specific vehicle or indicate
+                whether a recall repair has already been completed. For the most accurate available
+                information about outstanding recalls, verify your VIN through the manufacturer&apos;s
+                recall service or the official NHTSA website.
+              </p>
+              {vin ? (
+                <a
+                  href={`https://www.nhtsa.gov/vehicle/${encodeURIComponent(vin)}/check-recalls`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:text-primary/80 transition-colors"
+                >
+                  Check this VIN on NHTSA <ExternalLink className="h-3 w-3" />
+                </a>
+              ) : (
+                <a
+                  href="https://www.nhtsa.gov/recalls"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:text-primary/80 transition-colors"
+                >
+                  Look up recalls by VIN on NHTSA <ExternalLink className="h-3 w-3" />
+                </a>
+              )}
+            </div>
+          )}
+          {hasNhtsa && hasCpsc && <div className="h-px bg-border/40" />}
+          {hasCpsc && (
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              GarageFlo displays recalls that may apply to your equipment&apos;s manufacturer and
+              product type. Whether a specific unit is affected depends on its model number, serial
+              number, or manufacturing date range. These results may not include every recall
+              affecting your specific unit or indicate whether a recall repair has already been
+              completed. Check the manufacturer&apos;s recall notice for eligibility details.
+            </p>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function ProviderSection({
   result,
   vehicleName,
-  vin,
 }: {
   result: ProviderResult
   vehicleName: string
-  vin: string | null
 }) {
   const providerLabel = result.provider === 'nhtsa' ? 'NHTSA' : 'CPSC'
   const providerUrl = result.provider === 'nhtsa'
@@ -218,42 +279,16 @@ function ProviderSection({
         </a>
       </div>
 
-      {/* Safety disclaimer — always shown when recalls are present */}
-      <div className="rounded-lg border border-border/50 bg-secondary/30 px-3 py-2.5 space-y-1.5">
-        <p className="text-xs text-muted-foreground leading-relaxed">
-          <strong className="text-foreground">These are model-level potential matches.</strong>{' '}
-          Whether your specific {vehicleName} is affected depends on its VIN, serial number,
-          or manufacture date. Verify eligibility using the official recall link before taking action.
-        </p>
-        {result.provider === 'nhtsa' && vin && (
-          <a
-            href={`https://www.nhtsa.gov/vehicle/${encodeURIComponent(vin)}/check-recalls`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:text-primary/80 transition-colors"
-          >
-            Check this VIN on NHTSA <ExternalLink className="h-3 w-3" />
-          </a>
-        )}
-        {result.provider === 'nhtsa' && !vin && (
-          <p className="text-xs text-muted-foreground">
-            Add your VIN to this vehicle for a VIN-specific NHTSA check.
-          </p>
-        )}
-        {result.provider === 'cpsc' && (
-          <p className="text-xs text-muted-foreground">
-            For equipment, check the manufacturer&apos;s serial number lookup to confirm eligibility.
-          </p>
-        )}
-        {cpscScopeNotice && (
+      {cpscScopeNotice && (
+        <div className="rounded-lg border border-border/50 bg-secondary/20 px-3 py-2.5">
           <p className="text-xs text-muted-foreground">
             {cpscScopeNotice}{' '}
             <a href="https://www.cpsc.gov/Recalls" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline inline-flex items-center gap-0.5">
               Search full CPSC history <ExternalLink className="h-3 w-3" />
             </a>
           </p>
-        )}
-      </div>
+        </div>
+      )}
 
       {result.recalls.map(r => (
         <RecallCard key={`${r.provider}-${r.id}`} recall={r} />
@@ -385,8 +420,14 @@ export function RecallsTab({
         </Button>
       </div>
 
+      <RecallDisclosureCard
+        hasNhtsa={result.providers.some(p => p.provider === 'nhtsa')}
+        hasCpsc={result.providers.some(p => p.provider === 'cpsc')}
+        vin={resolveNhtsaVin(vin, vehicleType)}
+      />
+
       {result.providers.map(pr => (
-        <ProviderSection key={pr.provider} result={pr} vehicleName={vehicleName} vin={vin} />
+        <ProviderSection key={pr.provider} result={pr} vehicleName={vehicleName} />
       ))}
 
       {result.showUscgLink && <UscgLinkCard />}

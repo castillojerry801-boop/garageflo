@@ -31,6 +31,7 @@ import {
 import { toast } from 'sonner'
 import { Pencil, Loader2 } from 'lucide-react'
 import { cn, todayLocalString } from '@/lib/utils'
+import { validateVin, HIGHWAY_VIN_TYPES } from '@/lib/vin'
 
 interface EditVehicleDialogProps {
   vehicle: Vehicle
@@ -44,6 +45,7 @@ function formFromVehicle(v: Vehicle) {
     year: v.year?.toString() ?? '',
     make: v.make ?? '',
     model: v.model ?? '',
+    vin: v.vin ?? '',
     mileage: v.mileage?.toString() ?? '',
     mileage_reading_date: v.mileage_as_of ?? todayLocalString(),
     engine_hours: v.engine_hours?.toString() ?? '',
@@ -126,6 +128,7 @@ export function EditVehicleDialog({ vehicle }: EditVehicleDialogProps) {
         year: form.year ? parseInt(form.year) : null,
         make: form.make.trim() || null,
         model: form.model.trim() || null,
+        vin: form.vin.trim() || null,
         mileage: showMileage ? newMileage : null,
         mileage_as_of: showMileage && newMileage !== null ? form.mileage_reading_date : null,
         mileage_is_estimated: false,
@@ -244,6 +247,45 @@ export function EditVehicleDialog({ vehicle }: EditVehicleDialogProps) {
               />
             </div>
           </div>
+
+          {/* VIN / Serial ID — optional, type-aware */}
+          {(() => {
+            const isHighway = HIGHWAY_VIN_TYPES.has(form.type)
+            const vinValidation = form.vin.trim() ? validateVin(form.vin, form.type) : null
+            return (
+              <div className="space-y-1.5">
+                <Label htmlFor="ev-vin">
+                  {isHighway ? 'VIN' : 'Serial / ID Number'}
+                </Label>
+                <Input
+                  id="ev-vin"
+                  placeholder={isHighway ? 'e.g. 1HGBH41JXMN109186' : 'e.g. M17AH1234A56'}
+                  value={form.vin}
+                  onChange={(e) => handleChange('vin', e.target.value.toUpperCase())}
+                  className="bg-input border-border tracking-wider"
+                  autoComplete="off"
+                />
+                <p className="text-[11px] text-muted-foreground">
+                  {isHighway
+                    ? 'Optional — standard VINs are 17 characters. Used only for the official NHTSA recall lookup.'
+                    : 'Optional — may help verify recall eligibility with the manufacturer.'}
+                </p>
+                {vinValidation?.state === 'nonstandard' && (
+                  <p className="text-[11px] text-warning/80 leading-relaxed">
+                    Standard VINs are 17 characters. If this is an older vehicle or uses a
+                    different format, it will be saved as entered.
+                  </p>
+                )}
+                {vinValidation?.state === 'invalid_chars' && (
+                  <p className="text-[11px] text-danger/80 leading-relaxed">
+                    {vinValidation.invalidChars
+                      ? `VINs cannot contain ${vinValidation.invalidChars} — these letters are excluded to avoid confusion with 1 and 0.`
+                      : 'This does not appear to be a valid VIN. Standard VINs use letters A–H, J–N, P–R, Z and digits 0–9.'}
+                  </p>
+                )}
+              </div>
+            )
+          })()}
 
           {/* Mileage with optional reading date */}
           {showMileage && (
