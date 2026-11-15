@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
 import {
   DndContext,
   DragEndEvent,
@@ -30,7 +31,7 @@ import {
 } from '@/lib/garage-utils'
 import type { Vehicle, Reminder } from '@/types'
 import { Button } from '@/components/ui/button'
-import { GripVertical, ChevronUp, ChevronDown } from 'lucide-react'
+import { GripVertical, ChevronUp, ChevronDown, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 
@@ -203,29 +204,38 @@ function SectionSortable({
 // ── GarageGrid ────────────────────────────────────────────────────────────────
 
 export function GarageGrid({ vehicles: serverVehicles, remindersByVehicle }: GarageGridProps) {
+  const router = useRouter()
   const supabase = createClient()
 
   const [isRearranging, setIsRearranging] = useState(false)
+  const [isDoneWaiting, setIsDoneWaiting] = useState(false)
   const [localVehicles, setLocalVehicles] = useState<Vehicle[]>(serverVehicles)
 
   const lastSavedRef = useRef<Vehicle[]>(serverVehicles)
   const isSavingRef = useRef(false)
   const pendingRef = useRef<{ section: GarageSection; ordered: Vehicle[] } | null>(null)
+  const doneRequestedRef = useRef(false)
 
-  // Sync with server props when not rearranging (add/delete/edit triggers refresh)
+  // Ref mirrors isRearranging so the serverVehicles effect never reads a stale closure.
+  const isRearrangingRef = useRef(isRearranging)
+  useEffect(() => { isRearrangingRef.current = isRearranging }, [isRearranging])
+
+  // Sync localVehicles from server props when not rearranging.
+  // Uses isRearrangingRef (not the state value) to avoid resetting local order
+  // mid-session if serverVehicles gets a new reference before the refresh lands.
   useEffect(() => {
-    if (!isRearranging) {
+    if (!isRearrangingRef.current) {
       setLocalVehicles(serverVehicles)
       lastSavedRef.current = serverVehicles
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [serverVehicles])
 
-  const displayVehicles = isRearranging ? localVehicles : serverVehicles
-
+  // Always derive sections from localVehicles.
+  // localVehicles is kept in sync with serverVehicles (via useEffect above) when
+  // not rearranging, and holds the user's in-progress order when rearranging.
   const { vehiclesSection, equipmentSection, showSectionHeaders } = useMemo(
-    () => groupVehicles(displayVehicles),
-    [displayVehicles],
+    () => groupVehicles(localVehicles),
+    [localVehicles],
   )
 
   const hasMultipleInAnySection =
@@ -249,23 +259,39 @@ export function GarageGrid({ vehicles: serverVehicles, remindersByVehicle }: Gar
       toast.error('Could not save order. Restoring previous arrangement.')
       setLocalVehicles([...lastSavedRef.current])
       pendingRef.current = null
-    } else {
-      lastSavedRef.current = mergeSection(section, ordered, lastSavedRef.current)
+      // Cancel any pending Done request — stay in rearrange mode so user can retry.
+      doneRequestedRef.current = false
+      setIsDoneWaiting(false)
+      isSavingRef.current = false
+      return
     }
 
+    // Success: store with updated positions so failure restoration stays correct.
+    const withPositions = ordered.map((v, i) => ({ ...v, sort_order: i + 1 }))
+    lastSavedRef.current = mergeSection(section, withPositions, lastSavedRef.current)
     isSavingRef.current = false
 
-    if (!error && pendingRef.current) {
+    if (pendingRef.current) {
       const { section: ps, ordered: po } = pendingRef.current
       pendingRef.current = null
       persistOrder(ps, po)
+    } else if (doneRequestedRef.current) {
+      // All saves complete and Done was requested — exit now.
+      doneRequestedRef.current = false
+      setIsDoneWaiting(false)
+      setIsRearranging(false)
+      router.refresh()
     }
   }
 
   // ── Reorder handlers ──
 
   function handleReorder(section: GarageSection, newOrder: Vehicle[]) {
-    setLocalVehicles(prev => mergeSection(section, newOrder, prev))
+    // Assign sequential sort_order values (1-indexed) so that groupVehicles →
+    // sortForDisplay preserves the new order instead of reverting to the previous
+    // DB-stored positions. Without this, both DnD and button moves appear to snap back.
+    const withPositions = newOrder.map((v, i) => ({ ...v, sort_order: i + 1 }))
+    setLocalVehicles(prev => mergeSection(section, withPositions, prev))
   }
 
   function handleEnterRearrange() {
@@ -275,7 +301,15 @@ export function GarageGrid({ vehicles: serverVehicles, remindersByVehicle }: Gar
   }
 
   function handleDone() {
-    setIsRearranging(false)
+    if (!isSavingRef.current) {
+      // No save in flight — exit immediately.
+      setIsRearranging(false)
+      router.refresh()
+      return
+    }
+    // A save is in flight. Mark the request; persistOrder will exit when done.
+    doneRequestedRef.current = true
+    setIsDoneWaiting(true)
   }
 
   // ── Render ──
@@ -293,9 +327,11 @@ export function GarageGrid({ vehicles: serverVehicles, remindersByVehicle }: Gar
             <Button
               size="sm"
               onClick={handleDone}
+              disabled={isDoneWaiting}
               className="bg-primary text-primary-foreground hover:bg-primary/90 font-semibold"
             >
-              Done
+              {isDoneWaiting && <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />}
+              {isDoneWaiting ? 'Saving…' : 'Done'}
             </Button>
           ) : (
             <Button

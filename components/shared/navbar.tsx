@@ -42,11 +42,11 @@ export function Navbar({ user }: NavbarProps) {
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/50 bg-background/90 backdrop-blur-md">
-      <div className="container max-w-6xl mx-auto flex h-14 items-center justify-between px-4">
+      <div className="container max-w-6xl mx-auto flex h-14 sm:h-16 items-center justify-between px-4">
 
         {/* Logo */}
         <Link href="/dashboard" className="flex items-center gap-2 shrink-0">
-          <Image src="/logo.jpeg" alt="GarageFlo" width={24} height={24} className="rounded-md" />
+          <Image src="/logo.jpeg" alt="GarageFlo" width={48} height={48} className="rounded-md w-10 h-10 sm:w-12 sm:h-12" />
           <span className="font-bold text-sm tracking-tight hidden sm:block">
             <span className="text-foreground">Garage</span><span className="text-primary">Flo</span>
           </span>

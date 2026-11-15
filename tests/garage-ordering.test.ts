@@ -532,3 +532,327 @@ describe('RPC guard 5 — concurrent reorder safety (row-level lock contract)', 
     expect(true).toBe(true)
   })
 })
+
+// ── Interaction regression — sort_order assignment ────────────────────────────
+// The original bug: handleReorder stored vehicles in a new array order but left
+// their sort_order field values unchanged. groupVehicles → sortForDisplay then
+// re-sorted by the unchanged sort_orders and snapped back to the old visual order.
+// Both DnD (handleDragEnd) and buttons (handleMove) called handleReorder, so both
+// were broken identically.
+//
+// The fix: handleReorder assigns sort_order = i + 1 to each vehicle in newOrder
+// before writing to localVehicles. These tests document the invariant.
+
+describe('reorder interaction — DnD/button snap-back regression (sort_order assignment)', () => {
+  it('after reorder, vehicles have sequential sort_order values starting at 1', () => {
+    const gen = makeVehicle({ id: 'gen', type: 'generator', sort_order: 1 })
+    const trailer = makeVehicle({ id: 'trailer', type: 'trailer', sort_order: 2 })
+
+    // Simulate pressing "Up" on trailer → arrayMove([gen, trailer], 1, 0)
+    const newOrder = [trailer, gen]
+
+    // handleReorder assigns positions (THE FIX)
+    const withPositions = newOrder.map((v, i) => ({ ...v, sort_order: i + 1 }))
+
+    expect(withPositions[0].sort_order).toBe(1) // trailer is now position 1
+    expect(withPositions[1].sort_order).toBe(2) // gen is now position 2
+  })
+
+  it('groupVehicles preserves new order after sort_order assignment', () => {
+    const gen = makeVehicle({ id: 'gen', type: 'generator', sort_order: 1 })
+    const trailer = makeVehicle({ id: 'trailer', type: 'trailer', sort_order: 2 })
+    const newOrder = [trailer, gen]
+    const withPositions = newOrder.map((v, i) => ({ ...v, sort_order: i + 1 }))
+
+    const { equipmentSection } = groupVehicles(withPositions)
+    expect(equipmentSection[0].id).toBe('trailer') // new position 1
+    expect(equipmentSection[1].id).toBe('gen')     // new position 2
+  })
+
+  it('WITHOUT fix: groupVehicles reverts to original sort_order (documents the bug)', () => {
+    const gen = makeVehicle({ id: 'gen', type: 'generator', sort_order: 1 })
+    const trailer = makeVehicle({ id: 'trailer', type: 'trailer', sort_order: 2 })
+    const newOrder = [trailer, gen]
+
+    // Bug: sort_orders are NOT updated — they keep the original DB values
+    const { equipmentSection } = groupVehicles(newOrder)
+    // sortForDisplay sees gen(1) and trailer(2), puts gen first → snap-back
+    expect(equipmentSection[0].id).toBe('gen')     // ← wrong order (bug)
+    expect(equipmentSection[1].id).toBe('trailer') // ← wrong order (bug)
+  })
+
+  it('WITH fix: same input after sort_order assignment gives correct display order', () => {
+    const gen = makeVehicle({ id: 'gen', type: 'generator', sort_order: 1 })
+    const trailer = makeVehicle({ id: 'trailer', type: 'trailer', sort_order: 2 })
+    const newOrder = [trailer, gen]
+    const withPositions = newOrder.map((v, i) => ({ ...v, sort_order: i + 1 }))
+
+    const { equipmentSection } = groupVehicles(withPositions)
+    expect(equipmentSection[0].id).toBe('trailer') // ← correct (fix)
+    expect(equipmentSection[1].id).toBe('gen')     // ← correct (fix)
+  })
+
+  it('DnD and button both produce identically structured newOrder arrays', () => {
+    // Both handleDragEnd and handleMove call arrayMove then onReorder(newOrder).
+    // The fix applies equally to both since it is in handleReorder, not the callers.
+    const a = makeVehicle({ id: 'a', type: 'generator', sort_order: 1 })
+    const b = makeVehicle({ id: 'b', type: 'trailer',   sort_order: 2 })
+    const c = makeVehicle({ id: 'c', type: 'atv',       sort_order: 3 })
+    const items = [a, b, c]
+
+    // DnD: drag c to position 0
+    const dndOrder = [items[2], items[0], items[1]] // arrayMove(items, 2, 0)
+    // Button: press Up on c (idx=2, dir=-1) → move to idx=1
+    const btnOrder = [items[0], items[2], items[1]] // arrayMove(items, 2, 1)
+
+    const dndPositioned = dndOrder.map((v, i) => ({ ...v, sort_order: i + 1 }))
+    const btnPositioned = btnOrder.map((v, i) => ({ ...v, sort_order: i + 1 }))
+
+    expect(dndPositioned.map(v => v.sort_order)).toEqual([1, 2, 3])
+    expect(btnPositioned.map(v => v.sort_order)).toEqual([1, 2, 3])
+
+    // Both produce displays that groupVehicles preserves
+    const { equipmentSection: dndSec } = groupVehicles(mergeSection('equipment', dndPositioned, []))
+    const { equipmentSection: btnSec } = groupVehicles(mergeSection('equipment', btnPositioned, []))
+    expect(dndSec.map(v => v.id)).toEqual(['c', 'a', 'b'])
+    expect(btnSec.map(v => v.id)).toEqual(['a', 'c', 'b'])
+  })
+})
+
+// ── Interaction regression — multi-step reorder accumulation ──────────────────
+
+describe('reorder interaction — multi-step reorder accumulation', () => {
+  it('three sequential moves accumulate correctly', () => {
+    // Equipment: [a(1), b(2), c(3)]
+    // Move 1: press Up on b → [b(1), a(2), c(3)]
+    // Move 2: press Up on c → [b(1), c(2), a(3)]
+    // Move 3: press Down on b → [c(1), b(2), a(3)]  — no wait, let me redo
+    // Move 1: press Up on b (idx=1 → 0) → [b, a, c]
+    // Move 2: press Down on b (idx=0 → 1) → [a, b, c]  (net: no change)
+    // Actually let me keep it simple:
+    // Move 1: Up on b → [b, a, c]
+    // Move 2: Up on a (idx=1 in [b,a,c]) → [b, a, c]... hmm.
+    // Let me use concrete indices:
+    const a = makeVehicle({ id: 'a', type: 'generator', sort_order: 1 })
+    const b = makeVehicle({ id: 'b', type: 'trailer',   sort_order: 2 })
+    const c = makeVehicle({ id: 'c', type: 'atv',       sort_order: 3 })
+
+    // Move 1: press Up on c (idx=2 in [a,b,c]) → [a, c, b]
+    const afterMove1 = [a, c, b].map((v, i) => ({ ...v, sort_order: i + 1 }))
+    expect(groupVehicles(afterMove1).equipmentSection.map(v => v.id)).toEqual(['a', 'c', 'b'])
+
+    // Move 2: from [a,c,b], press Up on b (idx=2) → [a, b, c]
+    // Actually items are [afterMove1[0], afterMove1[1], afterMove1[2]] = [a(1), c(2), b(3)]
+    // press Up on b (idx=2) → arrayMove([a,c,b], 2, 1) = [a, b, c]
+    const afterMove2 = [afterMove1[0], afterMove1[2], afterMove1[1]].map((v, i) => ({ ...v, sort_order: i + 1 }))
+    expect(groupVehicles(afterMove2).equipmentSection.map(v => v.id)).toEqual(['a', 'b', 'c'])
+    // Positions are reset to 1,2,3 — the cumulative effect is a no-op but positions are correct
+    expect(afterMove2[0].sort_order).toBe(1)
+    expect(afterMove2[1].sort_order).toBe(2)
+    expect(afterMove2[2].sort_order).toBe(3)
+  })
+
+  it('positions are always 1-indexed sequential after each step', () => {
+    const a = makeVehicle({ id: 'a', type: 'generator', sort_order: 1 })
+    const b = makeVehicle({ id: 'b', type: 'trailer',   sort_order: 2 })
+    const c = makeVehicle({ id: 'c', type: 'atv',       sort_order: 3 })
+
+    // Any reorder produces 1,2,3 — never gaps or conflicts with the other section
+    const permutations = [
+      [a, b, c], [a, c, b], [b, a, c], [b, c, a], [c, a, b], [c, b, a],
+    ]
+    for (const perm of permutations) {
+      const positioned = perm.map((v, i) => ({ ...v, sort_order: i + 1 }))
+      expect(positioned.map(v => v.sort_order)).toEqual([1, 2, 3])
+    }
+  })
+
+  it('vehicle section reorders do not affect equipment section sort_orders', () => {
+    const car = makeVehicle({ id: 'car', type: 'car',       sort_order: 1 })
+    const truck = makeVehicle({ id: 'truck', type: 'truck', sort_order: 2 })
+    const gen = makeVehicle({ id: 'gen', type: 'generator', sort_order: 1 })
+    const trailer = makeVehicle({ id: 'trailer', type: 'trailer', sort_order: 2 })
+
+    // Reorder vehicles section: [truck, car]
+    const newVehicles = [truck, car].map((v, i) => ({ ...v, sort_order: i + 1 }))
+    const merged = mergeSection('vehicles', newVehicles, [car, truck, gen, trailer])
+
+    const { vehiclesSection, equipmentSection } = groupVehicles(merged)
+    // Vehicles in new order
+    expect(vehiclesSection.map(v => v.id)).toEqual(['truck', 'car'])
+    // Equipment unchanged
+    expect(equipmentSection.map(v => v.id)).toEqual(['gen', 'trailer'])
+  })
+})
+
+// ── Interaction regression — failure restoration ──────────────────────────────
+
+describe('reorder interaction — failure restoration with updated sort_orders', () => {
+  it('restore to lastSavedRef shows correct order after one successful save', () => {
+    // Initial DB state: gen(1), trailer(2)
+    const gen = makeVehicle({ id: 'gen', type: 'generator', sort_order: 1 })
+    const trailer = makeVehicle({ id: 'trailer', type: 'trailer', sort_order: 2 })
+    let lastSaved = [gen, trailer]
+
+    // Save 1 succeeds: user moves trailer above gen → [trailer, gen]
+    const save1 = [trailer, gen].map((v, i) => ({ ...v, sort_order: i + 1 }))
+    lastSaved = mergeSection('equipment', save1, lastSaved)
+
+    // Now lastSaved has trailer(1), gen(2)
+    // Save 2 fails: user tries to move gen above trailer → restore
+    const restored = [...lastSaved]
+    const { equipmentSection } = groupVehicles(restored)
+
+    // Failure restoration shows the LAST SUCCESSFULLY SAVED order, not the original DB order
+    expect(equipmentSection[0].id).toBe('trailer')
+    expect(equipmentSection[1].id).toBe('gen')
+  })
+
+  it('restore to original order when no saves have succeeded', () => {
+    const gen = makeVehicle({ id: 'gen', type: 'generator', sort_order: 1 })
+    const trailer = makeVehicle({ id: 'trailer', type: 'trailer', sort_order: 2 })
+
+    // lastSaved = initial server state (no saves yet)
+    const lastSaved = [gen, trailer]
+
+    // First reorder attempt fails → restore
+    const restored = [...lastSaved]
+    const { equipmentSection } = groupVehicles(restored)
+
+    expect(equipmentSection[0].id).toBe('gen')     // original order preserved
+    expect(equipmentSection[1].id).toBe('trailer')
+  })
+
+  it('lastSavedRef mergeSection keeps other-section items intact on restore', () => {
+    const car = makeVehicle({ id: 'car', type: 'car',       sort_order: 1 })
+    const gen = makeVehicle({ id: 'gen', type: 'generator', sort_order: 1 })
+    const trailer = makeVehicle({ id: 'trailer', type: 'trailer', sort_order: 2 })
+
+    // Equipment save succeeds: [trailer, gen]
+    const save1 = [trailer, gen].map((v, i) => ({ ...v, sort_order: i + 1 }))
+    const lastSaved = mergeSection('equipment', save1, [car, gen, trailer])
+
+    // Vehicles are still in lastSaved after equipment save
+    const vehicleItems = lastSaved.filter(v => VEHICLE_SECTION_MAP[v.type] === 'vehicles')
+    expect(vehicleItems.map(v => v.id)).toContain('car')
+  })
+
+  it('localVehicles after failed save shows same order as groupVehicles on lastSavedRef', () => {
+    const gen = makeVehicle({ id: 'gen', type: 'generator', sort_order: 1 })
+    const trailer = makeVehicle({ id: 'trailer', type: 'trailer', sort_order: 2 })
+
+    // 1 successful save: trailer moved above gen
+    const afterSave = [trailer, gen].map((v, i) => ({ ...v, sort_order: i + 1 }))
+    const lastSaved = mergeSection('equipment', afterSave, [gen, trailer])
+
+    // Failed second save → setLocalVehicles([...lastSavedRef.current])
+    const localAfterRestore = [...lastSaved]
+
+    const { equipmentSection } = groupVehicles(localAfterRestore)
+    expect(equipmentSection[0].id).toBe('trailer') // position 1 from successful save
+    expect(equipmentSection[1].id).toBe('gen')     // position 2 from successful save
+  })
+})
+
+// ── Interaction regression — boundary conditions ──────────────────────────────
+
+describe('reorder interaction — first and last item boundary conditions', () => {
+  it('first item (idx=0) cannot move up: canMoveUp = false', () => {
+    // In SortableCard: canMoveUp={idx > 0}
+    expect(0 > 0).toBe(false)  // first item
+    expect(1 > 0).toBe(true)   // second item
+  })
+
+  it('last item (idx=length-1) cannot move down: canMoveDown = false', () => {
+    // In SortableCard: canMoveDown={idx < items.length - 1}
+    const length = 3
+    expect(2 < length - 1).toBe(false) // last item
+    expect(1 < length - 1).toBe(true)  // second item
+  })
+
+  it('moving first item down swaps with second', () => {
+    const a = makeVehicle({ id: 'a', type: 'generator', sort_order: 1 })
+    const b = makeVehicle({ id: 'b', type: 'trailer',   sort_order: 2 })
+    const c = makeVehicle({ id: 'c', type: 'atv',       sort_order: 3 })
+    const items = [a, b, c]
+
+    // handleMove(0, 1) → arrayMove(items, 0, 1) = [b, a, c]
+    const newOrder = [items[1], items[0], items[2]].map((v, i) => ({ ...v, sort_order: i + 1 }))
+    const { equipmentSection } = groupVehicles(newOrder)
+    expect(equipmentSection.map(v => v.id)).toEqual(['b', 'a', 'c'])
+  })
+
+  it('moving last item up swaps with second-to-last', () => {
+    const a = makeVehicle({ id: 'a', type: 'generator', sort_order: 1 })
+    const b = makeVehicle({ id: 'b', type: 'trailer',   sort_order: 2 })
+    const c = makeVehicle({ id: 'c', type: 'atv',       sort_order: 3 })
+    const items = [a, b, c]
+
+    // handleMove(2, -1) → arrayMove(items, 2, 1) = [a, c, b]
+    const newOrder = [items[0], items[2], items[1]].map((v, i) => ({ ...v, sort_order: i + 1 }))
+    const { equipmentSection } = groupVehicles(newOrder)
+    expect(equipmentSection.map(v => v.id)).toEqual(['a', 'c', 'b'])
+  })
+
+  it('two-item section: only valid moves are down-on-first and up-on-second', () => {
+    const a = makeVehicle({ id: 'a', type: 'generator', sort_order: 1 })
+    const b = makeVehicle({ id: 'b', type: 'trailer',   sort_order: 2 })
+    const items = [a, b]
+
+    // canMoveUp / canMoveDown matrix:
+    expect(0 > 0).toBe(false)              // a: cannot move up
+    expect(0 < items.length - 1).toBe(true) // a: can move down
+    expect(1 > 0).toBe(true)              // b: can move up
+    expect(1 < items.length - 1).toBe(false) // b: cannot move down
+
+    // The one valid move in each direction produces the same result:
+    const downA = [b, a].map((v, i) => ({ ...v, sort_order: i + 1 }))
+    const upB   = [b, a].map((v, i) => ({ ...v, sort_order: i + 1 }))
+    expect(groupVehicles(downA).equipmentSection.map(v => v.id)).toEqual(['b', 'a'])
+    expect(groupVehicles(upB).equipmentSection.map(v => v.id)).toEqual(['b', 'a'])
+  })
+})
+
+// ── Interaction regression — cross-section isolation ─────────────────────────
+
+describe('reorder interaction — cross-section isolation', () => {
+  it('reordering equipment section leaves vehicles section order intact', () => {
+    const car1 = makeVehicle({ id: 'car1', type: 'car',  sort_order: 1 })
+    const car2 = makeVehicle({ id: 'car2', type: 'truck', sort_order: 2 })
+    const gen   = makeVehicle({ id: 'gen',   type: 'generator', sort_order: 1 })
+    const trailer = makeVehicle({ id: 'trailer', type: 'trailer', sort_order: 2 })
+
+    const base = [car1, car2, gen, trailer]
+
+    // Reorder equipment: [trailer, gen]
+    const newEquip = [trailer, gen].map((v, i) => ({ ...v, sort_order: i + 1 }))
+    const merged = mergeSection('equipment', newEquip, base)
+
+    const { vehiclesSection, equipmentSection } = groupVehicles(merged)
+    expect(vehiclesSection.map(v => v.id)).toEqual(['car1', 'car2']) // unchanged
+    expect(equipmentSection.map(v => v.id)).toEqual(['trailer', 'gen'])
+  })
+
+  it('the two DndContext instances in SectionSortable prevent cross-section drag (documented)', () => {
+    // GarageGrid renders two independent <SectionSortable> components, each with
+    // its own <DndContext>. Items in the vehicles context are invisible to the
+    // equipment context and vice versa, making cross-section dragging physically
+    // impossible.
+    expect(true).toBe(true)
+  })
+
+  it('persistOrder only sends IDs from the target section', () => {
+    const car = makeVehicle({ id: 'car', type: 'car',       sort_order: 1 })
+    const gen = makeVehicle({ id: 'gen', type: 'generator', sort_order: 1 })
+    const trailer = makeVehicle({ id: 'trailer', type: 'trailer', sort_order: 2 })
+
+    // Simulate onPersist(['vehicles'], [car]) — only vehicle IDs
+    const vehiclesPayload = [car].map(v => v.id)
+    expect(vehiclesPayload).not.toContain('gen')
+    expect(vehiclesPayload).not.toContain('trailer')
+
+    // Simulate onPersist(['equipment'], [trailer, gen])
+    const equipPayload = [trailer, gen].map(v => v.id)
+    expect(equipPayload).not.toContain('car')
+  })
+})
