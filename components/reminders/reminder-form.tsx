@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { COMMON_SERVICE_TYPES } from '@/types'
+import { todayLocalString } from '@/lib/utils'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -139,7 +140,7 @@ export function ReminderForm({ vehicleId }: ReminderFormProps) {
               type="date"
               value={form.next_due_date}
               onChange={(e) => handleChange('next_due_date', e.target.value)}
-              min={new Date().toISOString().split('T')[0]}
+              min={todayLocalString()}
               className="bg-input border-border"
             />
           </div>

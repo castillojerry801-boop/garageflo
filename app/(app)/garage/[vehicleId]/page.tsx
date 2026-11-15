@@ -9,6 +9,7 @@ import { ReminderForm } from '@/components/reminders/reminder-form'
 import { AttachmentsTab } from '@/components/garage/attachments-tab'
 import { RemindersTab } from '@/components/reminders/reminders-tab'
 import { getReminderStatus, VEHICLE_TYPE_LABELS, type MaintenanceLog, type Reminder, type ReminderStatus } from '@/types'
+import { formatDateOnly } from '@/lib/utils'
 import { ArrowLeft, Wrench, Bell, Paperclip, AlertTriangle, Clock, CheckCircle } from 'lucide-react'
 import Link from 'next/link'
 import Image from 'next/image'
@@ -245,9 +246,7 @@ export default async function VehiclePage({ params }: { params: Promise<{ vehicl
                     </div>
                   </div>
                   <p className="text-xs text-muted-foreground mt-1 tabular-nums">
-                    {new Date(log.performed_at).toLocaleDateString('en-US', {
-                      month: 'short', day: 'numeric', year: 'numeric',
-                    })}
+                    {formatDateOnly(log.performed_at)}
                     {log.mileage_at_service != null && ` · ${log.mileage_at_service.toLocaleString()} mi`}
                     {log.hours_at_service != null && ` · ${log.hours_at_service} hrs`}
                   </p>

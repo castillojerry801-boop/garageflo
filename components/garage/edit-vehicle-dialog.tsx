@@ -30,7 +30,7 @@ import {
 } from '@/components/ui/select'
 import { toast } from 'sonner'
 import { Pencil, Loader2 } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { cn, todayLocalString } from '@/lib/utils'
 
 interface EditVehicleDialogProps {
   vehicle: Vehicle
@@ -45,9 +45,9 @@ function formFromVehicle(v: Vehicle) {
     make: v.make ?? '',
     model: v.model ?? '',
     mileage: v.mileage?.toString() ?? '',
-    mileage_reading_date: v.mileage_as_of ?? new Date().toISOString().split('T')[0],
+    mileage_reading_date: v.mileage_as_of ?? todayLocalString(),
     engine_hours: v.engine_hours?.toString() ?? '',
-    engine_hours_reading_date: v.engine_hours_as_of ?? new Date().toISOString().split('T')[0],
+    engine_hours_reading_date: v.engine_hours_as_of ?? todayLocalString(),
     color: v.color ?? '',
     notes: v.notes ?? '',
   }

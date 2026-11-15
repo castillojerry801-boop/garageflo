@@ -4,6 +4,7 @@ import React, { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { getReminderStatus, type Reminder, type ReminderStatus } from '@/types'
+import { formatDateOnly } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { AlertTriangle, Clock, CheckCircle, Trash2, Calendar, Gauge, Timer } from 'lucide-react'
 import { toast } from 'sonner'
@@ -68,9 +69,7 @@ export function RemindersTab({ reminders, currentMileage, currentHours }: Remind
                   {reminder.next_due_date && (
                     <span className="flex items-center gap-1 text-xs text-muted-foreground">
                       <Calendar className="h-3 w-3" />
-                      {new Date(reminder.next_due_date).toLocaleDateString('en-US', {
-                        month: 'short', day: 'numeric', year: 'numeric',
-                      })}
+                      {formatDateOnly(reminder.next_due_date)}
                     </span>
                   )}
                   {reminder.next_due_mileage != null && (

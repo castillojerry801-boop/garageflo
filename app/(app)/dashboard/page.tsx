@@ -6,6 +6,7 @@ import { redirect } from 'next/navigation'
 import { VehicleCard } from '@/components/garage/vehicle-card'
 import { AddVehicleDialog } from '@/components/garage/add-vehicle-dialog'
 import { getReminderStatus, type Reminder, type Vehicle } from '@/types'
+import { formatDateOnly } from '@/lib/utils'
 import { AlertTriangle, Clock } from 'lucide-react'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
@@ -150,7 +151,7 @@ export default async function DashboardPage() {
                       reminder.status === 'overdue' || reminder.status === 'due' ? 'text-danger' : 'text-warning'
                     )}>
                       {reminder.status === 'overdue' ? 'Overdue' : reminder.status === 'due' ? 'Due Now' : 'Due'}{' '}
-                      {new Date(reminder.next_due_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                      {formatDateOnly(reminder.next_due_date, { month: 'short', day: 'numeric' })}
                     </span>
                   )}
                   {reminder.next_due_mileage != null && !reminder.next_due_date && (

@@ -24,7 +24,7 @@ import {
 } from '@/components/ui/dialog'
 import { toast } from 'sonner'
 import { Plus, Loader2, ChevronDown, Bell } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { cn, todayLocalString } from '@/lib/utils'
 
 interface LogFormProps {
   vehicleId: string
@@ -70,7 +70,7 @@ export function LogForm({ vehicleId, reminders = [], trackingMethod = 'mileage',
   const [form, setForm] = useState({
     service_type: '',
     custom_service: '',
-    performed_at: new Date().toISOString().split('T')[0],
+    performed_at: todayLocalString(),
     mileage_at_service: '',
     hours_at_service: '',
     cost: '',
@@ -176,7 +176,7 @@ export function LogForm({ vehicleId, reminders = [], trackingMethod = 'mileage',
     setBothUnit('miles')
     setForm({
       service_type: '', custom_service: '',
-      performed_at: new Date().toISOString().split('T')[0],
+      performed_at: todayLocalString(),
       mileage_at_service: '', hours_at_service: '', cost: '', notes: '',
     })
   }

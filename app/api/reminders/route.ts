@@ -1,6 +1,7 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse } from 'next/server'
 import { Resend } from 'resend'
+import { formatDateOnly } from '@/lib/utils'
 
 export async function GET(request: Request) {
   const authHeader = request.headers.get('authorization')
@@ -67,7 +68,7 @@ export async function GET(request: Request) {
       const v = r.vehicles as { name: string; year: number; make: string; model: string }
       const vehicleName = [v?.year, v?.make, v?.model].filter(Boolean).join(' ') || v?.name
       const dueStr = r.next_due_date
-        ? `by ${new Date(r.next_due_date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}`
+        ? `by ${formatDateOnly(r.next_due_date, { month: 'long', day: 'numeric', year: 'numeric' })}`
         : r.next_due_mileage
         ? `at ${r.next_due_mileage.toLocaleString()} miles`
         : ''

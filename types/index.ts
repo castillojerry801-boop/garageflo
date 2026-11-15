@@ -1,3 +1,5 @@
+import { parseDateLocal } from '@/lib/utils'
+
 export type VehicleType =
   | 'car'
   | 'truck'
@@ -151,17 +153,17 @@ export function getReminderStatus(
   currentMileage?: number | null,
   currentHours?: number | null,
 ): ReminderStatus {
-  const now = new Date()
   let result: ReminderStatus = 'ok'
 
   function accumulate(s: ReminderStatus) {
     if (STATUS_RANK[s] > STATUS_RANK[result]) result = s
   }
 
-  // Date threshold
+  // Date threshold — compare local calendar days, not UTC timestamps.
   if (reminder.next_due_date) {
-    const due = new Date(reminder.next_due_date)
-    const daysUntilDue = Math.ceil((due.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+    const due = parseDateLocal(reminder.next_due_date)
+    const today = new Date(); today.setHours(0, 0, 0, 0)
+    const daysUntilDue = Math.ceil((due.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
     if (daysUntilDue < 0)       accumulate('overdue')
     else if (daysUntilDue === 0) accumulate('due')
     else if (daysUntilDue <= 14) accumulate('approaching')
