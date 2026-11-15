@@ -144,3 +144,13 @@
 ::-webkit-scrollbar-track { background: #191E2D; }
 ::-webkit-scrollbar-thumb { background: #484D59; border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: #00B8F5; }
+
+/* iOS safe area insets — env() returns 0 on non-iOS browsers so this is safe everywhere.
+   viewport-fit=cover extends the WebView to full screen; these paddings push content
+   away from the Dynamic Island / status bar (top) and home indicator (bottom). */
+body {
+  padding-top: env(safe-area-inset-top);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+  padding-bottom: env(safe-area-inset-bottom);
+}
