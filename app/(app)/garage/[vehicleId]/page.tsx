@@ -8,12 +8,15 @@ import { LogForm } from '@/components/maintenance/log-form'
 import { ReminderForm } from '@/components/reminders/reminder-form'
 import { AttachmentsTab } from '@/components/garage/attachments-tab'
 import { RemindersTab } from '@/components/reminders/reminders-tab'
-import { getReminderStatus, VEHICLE_TYPE_LABELS, type MaintenanceLog, type Reminder } from '@/types'
+import { getReminderStatus, VEHICLE_TYPE_LABELS, type MaintenanceLog, type Reminder, type ReminderStatus } from '@/types'
 import { ArrowLeft, Wrench, Bell, Paperclip, AlertTriangle, Clock, CheckCircle } from 'lucide-react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { cn } from '@/lib/utils'
 import { DeleteVehicleButton } from '@/components/garage/delete-vehicle-button'
+import { EditVehicleDialog } from '@/components/garage/edit-vehicle-dialog'
+import { EditLogDialog } from '@/components/maintenance/edit-log-dialog'
+import { DeleteLogButton } from '@/components/maintenance/delete-log-button'
 
 export default async function VehiclePage({ params }: { params: Promise<{ vehicleId: string }> }) {
   const { vehicleId } = await params
@@ -40,23 +43,33 @@ export default async function VehiclePage({ params }: { params: Promise<{ vehicl
 
   await connection()
 
-  const worstStatus = (reminders || []).reduce<'overdue' | 'due_soon' | 'ok'>((worst, r: Reminder) => {
+  const STATUS_RANK: Record<ReminderStatus, number> = { ok: 0, approaching: 1, due: 2, overdue: 3 }
+  const worstStatus = (reminders || []).reduce<ReminderStatus>((worst, r: Reminder) => {
     const s = getReminderStatus(r, vehicle.mileage)
-    if (s === 'overdue') return 'overdue'
-    if (s === 'due_soon' && worst !== 'overdue') return 'due_soon'
-    return worst
+    return STATUS_RANK[s] > STATUS_RANK[worst] ? s : worst
   }, 'ok')
 
   const totalCost = (logs || []).reduce((sum: number, log: MaintenanceLog) => sum + (log.cost || 0), 0)
   const urgentCount = (reminders || []).filter((r: Reminder) => getReminderStatus(r, vehicle.mileage) !== 'ok').length
   const subtitle = [vehicle.year, vehicle.make, vehicle.model].filter(Boolean).join(' ')
 
-  const StatusIcon = worstStatus === 'overdue' ? AlertTriangle : worstStatus === 'due_soon' ? Clock : CheckCircle
-  const statusLabel = worstStatus === 'overdue' ? 'Overdue' : worstStatus === 'due_soon' ? 'Due Soon' : 'Up to Date'
+  const StatusIcon = worstStatus === 'overdue' || worstStatus === 'due'
+    ? AlertTriangle
+    : worstStatus === 'approaching'
+    ? Clock
+    : CheckCircle
+  const statusLabel = worstStatus === 'overdue'
+    ? 'Overdue'
+    : worstStatus === 'due'
+    ? 'Due Now'
+    : worstStatus === 'approaching'
+    ? 'Approaching'
+    : 'Up to Date'
   const statusChipClass = {
-    overdue:  'bg-danger/10 text-danger border-danger/30',
-    due_soon: 'bg-warning/10 text-warning border-warning/30',
-    ok:       'bg-success/10 text-success border-success/25',
+    overdue:    'bg-danger/10 text-danger border-danger/30',
+    due:        'bg-danger/10 text-danger border-danger/30',
+    approaching:'bg-warning/10 text-warning border-warning/30',
+    ok:         'bg-success/10 text-success border-success/25',
   }[worstStatus]
 
   const mileageText = vehicle.mileage != null
@@ -101,6 +114,7 @@ export default async function VehiclePage({ params }: { params: Promise<{ vehicl
                     {statusLabel}
                   </span>
                 )}
+                <EditVehicleDialog vehicle={vehicle} />
                 <DeleteVehicleButton vehicleId={vehicle.id} vehicleName={vehicle.name} />
               </div>
             </div>
@@ -128,7 +142,8 @@ export default async function VehiclePage({ params }: { params: Promise<{ vehicl
             {subtitle && <p className="text-sm text-muted-foreground mt-0.5 truncate">{subtitle}</p>}
             {mileageText && <p className="text-xs text-muted-foreground mt-0.5 tabular-nums">{mileageText}</p>}
           </div>
-          <div className="shrink-0">
+          <div className="shrink-0 flex items-center gap-1">
+            <EditVehicleDialog vehicle={vehicle} />
             <DeleteVehicleButton vehicleId={vehicle.id} vehicleName={vehicle.name} />
           </div>
         </div>
@@ -202,7 +217,7 @@ export default async function VehiclePage({ params }: { params: Promise<{ vehicl
                 </p>
               )}
             </div>
-            <LogForm vehicleId={vehicle.id} />
+            <LogForm vehicleId={vehicle.id} reminders={reminders || []} />
           </div>
 
           {(logs || []).length === 0 ? (
@@ -219,11 +234,15 @@ export default async function VehiclePage({ params }: { params: Promise<{ vehicl
                 >
                   <div className="flex items-start justify-between gap-3">
                     <p className="text-sm font-medium text-foreground leading-snug">{log.service_type}</p>
-                    {log.cost != null && (
-                      <span className="text-sm font-semibold text-foreground tabular-nums shrink-0">
-                        ${log.cost.toFixed(2)}
-                      </span>
-                    )}
+                    <div className="flex items-center gap-1 shrink-0">
+                      {log.cost != null && (
+                        <span className="text-sm font-semibold text-foreground tabular-nums mr-1">
+                          ${log.cost.toFixed(2)}
+                        </span>
+                      )}
+                      <EditLogDialog log={log} />
+                      <DeleteLogButton logId={log.id} serviceType={log.service_type} />
+                    </div>
                   </div>
                   <p className="text-xs text-muted-foreground mt-1 tabular-nums">
                     {new Date(log.performed_at).toLocaleDateString('en-US', {

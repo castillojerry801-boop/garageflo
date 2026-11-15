@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import Image from 'next/image'
-import { Vehicle, Reminder, getReminderStatus, VEHICLE_TYPE_LABELS } from '@/types'
+import { Vehicle, Reminder, getReminderStatus, VEHICLE_TYPE_LABELS, type ReminderStatus } from '@/types'
 import { cn } from '@/lib/utils'
 
 interface VehicleCardProps {
@@ -11,11 +11,10 @@ interface VehicleCardProps {
 export function VehicleCard({ vehicle, reminders = [] }: VehicleCardProps) {
   const typeLabel = VEHICLE_TYPE_LABELS[vehicle.type] || 'Vehicle'
 
-  const worstStatus = reminders.reduce<'overdue' | 'due_soon' | 'ok'>((worst, r) => {
+  const STATUS_RANK: Record<ReminderStatus, number> = { ok: 0, approaching: 1, due: 2, overdue: 3 }
+  const worstStatus = reminders.reduce<ReminderStatus>((worst, r) => {
     const s = getReminderStatus(r, vehicle.mileage)
-    if (s === 'overdue') return 'overdue'
-    if (s === 'due_soon' && worst !== 'overdue') return 'due_soon'
-    return worst
+    return STATUS_RANK[s] > STATUS_RANK[worst] ? s : worst
   }, 'ok')
 
   const hasReminders = reminders.length > 0
@@ -29,11 +28,13 @@ export function VehicleCard({ vehicle, reminders = [] }: VehicleCardProps) {
     ? `${vehicle.engine_hours.toLocaleString()} hrs`
     : null
 
-  const sc = {
-    overdue:  { label: 'Overdue',    dot: 'bg-danger',  text: 'text-danger',  border: 'border-danger/50' },
-    due_soon: { label: 'Due Soon',   dot: 'bg-warning', text: 'text-warning', border: 'border-warning/45' },
-    ok:       { label: 'Up to Date', dot: 'bg-success', text: 'text-success', border: 'border-border' },
-  }[worstStatus]
+  const sc: Record<ReminderStatus, { label: string; dot: string; text: string; border: string }> = {
+    overdue:    { label: 'Overdue',     dot: 'bg-danger',  text: 'text-danger',  border: 'border-danger/50' },
+    due:        { label: 'Due Now',     dot: 'bg-danger',  text: 'text-danger',  border: 'border-danger/50' },
+    approaching:{ label: 'Approaching', dot: 'bg-warning', text: 'text-warning', border: 'border-warning/45' },
+    ok:         { label: 'Up to Date',  dot: 'bg-success', text: 'text-success', border: 'border-border' },
+  }
+  const statusConfig = sc[worstStatus]
 
   return (
     <Link
@@ -43,13 +44,13 @@ export function VehicleCard({ vehicle, reminders = [] }: VehicleCardProps) {
       <article className={cn(
         'relative bg-card rounded-xl overflow-hidden border transition-all duration-150',
         'group-hover:shadow-xl group-hover:shadow-black/40 group-hover:-translate-y-0.5',
-        hasUrgent ? sc.border : 'border-border/70 group-hover:border-border',
+        hasUrgent ? statusConfig.border : 'border-border/70 group-hover:border-border',
       )}>
         {/* 2px status accent at top */}
         {hasUrgent && (
           <div className={cn(
             'absolute top-0 inset-x-0 h-[2px] z-10',
-            worstStatus === 'overdue' ? 'bg-danger' : 'bg-warning'
+            worstStatus === 'overdue' || worstStatus === 'due' ? 'bg-danger' : 'bg-warning'
           )} />
         )}
 
@@ -67,12 +68,12 @@ export function VehicleCard({ vehicle, reminders = [] }: VehicleCardProps) {
             {hasUrgent && (
               <div className={cn(
                 'absolute top-2.5 right-2.5 inline-flex items-center gap-1.5 text-[11px] font-semibold px-2 py-1 rounded border backdrop-blur-sm',
-                worstStatus === 'overdue'
+                worstStatus === 'overdue' || worstStatus === 'due'
                   ? 'bg-black/60 text-danger border-danger/50'
                   : 'bg-black/60 text-warning border-warning/45'
               )}>
-                <span className={cn('w-1.5 h-1.5 rounded-full inline-block', sc.dot)} />
-                {sc.label}
+                <span className={cn('w-1.5 h-1.5 rounded-full inline-block', statusConfig.dot)} />
+                {statusConfig.label}
               </div>
             )}
           </div>
@@ -106,9 +107,9 @@ export function VehicleCard({ vehicle, reminders = [] }: VehicleCardProps) {
               {mileageText ?? 'No mileage recorded'}
             </span>
             {hasReminders && (
-              <span className={cn('inline-flex items-center gap-1.5 text-[11px] font-semibold', sc.text)}>
-                <span className={cn('w-1.5 h-1.5 rounded-full inline-block shrink-0', sc.dot)} />
-                {sc.label}
+              <span className={cn('inline-flex items-center gap-1.5 text-[11px] font-semibold', statusConfig.text)}>
+                <span className={cn('w-1.5 h-1.5 rounded-full inline-block shrink-0', statusConfig.dot)} />
+                {statusConfig.label}
               </span>
             )}
           </div>

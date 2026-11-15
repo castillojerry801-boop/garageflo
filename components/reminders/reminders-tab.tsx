@@ -1,13 +1,14 @@
 'use client'
 
-import { useState } from 'react'
+import React, { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { getReminderStatus, type Reminder } from '@/types'
+import { getReminderStatus, type Reminder, type ReminderStatus } from '@/types'
 import { Button } from '@/components/ui/button'
 import { AlertTriangle, Clock, CheckCircle, Trash2, Calendar, Gauge } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
+import { EditReminderDialog } from '@/components/reminders/edit-reminder-dialog'
 
 interface RemindersTabProps {
   reminders: Reminder[]
@@ -45,10 +46,11 @@ export function RemindersTab({ reminders, currentMileage }: RemindersTabProps) {
     <div className="space-y-2">
       {reminders.map((reminder) => {
         const status = getReminderStatus(reminder, currentMileage)
-        const configs = {
-          overdue:  { Icon: AlertTriangle, label: 'Overdue',    border: 'border-danger/35',  iconCls: 'text-danger',    badge: 'bg-danger/10 text-danger border-danger/30' },
-          due_soon: { Icon: Clock,         label: 'Due Soon',   border: 'border-warning/30', iconCls: 'text-warning',   badge: 'bg-warning/10 text-warning border-warning/30' },
-          ok:       { Icon: CheckCircle,   label: 'Up to Date', border: 'border-border/60',  iconCls: 'text-success/70', badge: 'bg-success/10 text-success border-success/25' },
+        const configs: Record<ReminderStatus, { Icon: React.ElementType; label: string; border: string; iconCls: string; badge: string }> = {
+          overdue:    { Icon: AlertTriangle, label: 'Overdue',    border: 'border-danger/35',  iconCls: 'text-danger',     badge: 'bg-danger/10 text-danger border-danger/30' },
+          due:        { Icon: AlertTriangle, label: 'Due Now',    border: 'border-danger/35',  iconCls: 'text-danger',     badge: 'bg-danger/10 text-danger border-danger/30' },
+          approaching:{ Icon: Clock,         label: 'Approaching',border: 'border-warning/30', iconCls: 'text-warning',    badge: 'bg-warning/10 text-warning border-warning/30' },
+          ok:         { Icon: CheckCircle,   label: 'Up to Date', border: 'border-border/60',  iconCls: 'text-success/70', badge: 'bg-success/10 text-success border-success/25' },
         }
         const cfg = configs[status]
 
@@ -84,6 +86,7 @@ export function RemindersTab({ reminders, currentMileage }: RemindersTabProps) {
               <span className={cn('text-[11px] font-semibold px-2 py-0.5 rounded border', cfg.badge)}>
                 {cfg.label}
               </span>
+              <EditReminderDialog reminder={reminder} />
               <Button
                 variant="ghost"
                 size="icon"

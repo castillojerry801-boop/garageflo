@@ -52,21 +52,18 @@ export default async function DashboardPage() {
 
   await connection()
 
+  const STATUS_RANK = { ok: 0, approaching: 1, due: 2, overdue: 3 } as const
   const urgentReminders = (allReminders || [])
     .map((r: Reminder) => {
       const vehicle = (vehicles || []).find((v: Vehicle) => v.id === r.vehicle_id)
       const status = getReminderStatus(r, vehicle?.mileage)
       return { ...r, status, vehicle }
     })
-    .filter(r => r.status === 'overdue' || r.status === 'due_soon')
-    .sort((a, b) => {
-      if (a.status === 'overdue' && b.status !== 'overdue') return -1
-      if (b.status === 'overdue' && a.status !== 'overdue') return 1
-      return 0
-    })
+    .filter(r => r.status !== 'ok')
+    .sort((a, b) => STATUS_RANK[b.status] - STATUS_RANK[a.status])
 
-  const overdueCount = urgentReminders.filter(r => r.status === 'overdue').length
-  const dueSoonCount = urgentReminders.filter(r => r.status === 'due_soon').length
+  const overdueCount = urgentReminders.filter(r => r.status === 'overdue' || r.status === 'due').length
+  const dueSoonCount = urgentReminders.filter(r => r.status === 'approaching').length
   const vehicleCount = (vehicles || []).length
 
   return (
@@ -139,7 +136,7 @@ export default async function DashboardPage() {
                 <div className="flex items-center gap-3 min-w-0">
                   <span className={cn(
                     'w-1.5 h-1.5 rounded-full shrink-0',
-                    reminder.status === 'overdue' ? 'bg-danger' : 'bg-warning'
+                    reminder.status === 'overdue' || reminder.status === 'due' ? 'bg-danger' : 'bg-warning'
                   )} />
                   <div className="min-w-0">
                     <span className="text-sm font-medium truncate block">{reminder.service_type}</span>
@@ -150,16 +147,16 @@ export default async function DashboardPage() {
                   {reminder.next_due_date && (
                     <span className={cn(
                       'text-xs font-medium tabular-nums',
-                      reminder.status === 'overdue' ? 'text-danger' : 'text-warning'
+                      reminder.status === 'overdue' || reminder.status === 'due' ? 'text-danger' : 'text-warning'
                     )}>
-                      {reminder.status === 'overdue' ? 'Overdue' : 'Due'}{' '}
+                      {reminder.status === 'overdue' ? 'Overdue' : reminder.status === 'due' ? 'Due Now' : 'Due'}{' '}
                       {new Date(reminder.next_due_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                     </span>
                   )}
                   {reminder.next_due_mileage != null && !reminder.next_due_date && (
                     <span className={cn(
                       'text-xs font-medium tabular-nums',
-                      reminder.status === 'overdue' ? 'text-danger' : 'text-warning'
+                      reminder.status === 'overdue' || reminder.status === 'due' ? 'text-danger' : 'text-warning'
                     )}>
                       at {reminder.next_due_mileage.toLocaleString()} mi
                     </span>

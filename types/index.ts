@@ -63,6 +63,8 @@ export interface MaintenanceLog {
   hours_at_service: number | null
   cost: number | null
   notes: string | null
+  idempotency_key: string | null
+  reminder_id: string | null
   created_at: string
   updated_at: string
 }
@@ -78,6 +80,7 @@ export interface Reminder {
   interval_months: number | null
   interval_miles: number | null
   interval_hours: number | null
+  notify_miles_before: number | null
   is_active: boolean
   created_at: string
   updated_at: string
@@ -97,7 +100,16 @@ export interface Attachment {
   created_at: string
 }
 
-export type ReminderStatus = 'overdue' | 'due_soon' | 'ok'
+// 4-state reminder status.
+// Severity order: ok < approaching < due < overdue
+export type ReminderStatus = 'overdue' | 'due' | 'approaching' | 'ok'
+
+const STATUS_RANK: Record<ReminderStatus, number> = {
+  ok: 0,
+  approaching: 1,
+  due: 2,
+  overdue: 3,
+}
 
 export function getReminderStatus(
   reminder: Reminder,
@@ -107,25 +119,34 @@ export function getReminderStatus(
   const now = new Date()
   let result: ReminderStatus = 'ok'
 
-  // Check all thresholds independently — return 'overdue' the moment any fires,
-  // otherwise accumulate 'due_soon' so a later overdue threshold isn't shadowed.
+  function accumulate(s: ReminderStatus) {
+    if (STATUS_RANK[s] > STATUS_RANK[result]) result = s
+  }
+
+  // Date threshold
   if (reminder.next_due_date) {
     const due = new Date(reminder.next_due_date)
     const daysUntilDue = Math.ceil((due.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
-    if (daysUntilDue < 0) return 'overdue'
-    if (daysUntilDue <= 14) result = 'due_soon'
+    if (daysUntilDue < 0) accumulate('overdue')
+    else if (daysUntilDue === 0) accumulate('due')
+    else if (daysUntilDue <= 14) accumulate('approaching')
   }
 
+  // Mileage threshold — per-reminder early-warning window, falls back to 500 mi
   if (reminder.next_due_mileage != null && currentMileage != null) {
+    const earlyWarnMiles = reminder.notify_miles_before ?? 500
     const milesUntilDue = reminder.next_due_mileage - currentMileage
-    if (milesUntilDue < 0) return 'overdue'
-    if (milesUntilDue <= 500) result = 'due_soon'
+    if (milesUntilDue < 0) accumulate('overdue')
+    else if (milesUntilDue === 0) accumulate('due')
+    else if (milesUntilDue <= earlyWarnMiles) accumulate('approaching')
   }
 
+  // Hours threshold
   if (reminder.next_due_hours != null && currentHours != null) {
     const hoursUntilDue = reminder.next_due_hours - currentHours
-    if (hoursUntilDue < 0) return 'overdue'
-    if (hoursUntilDue <= 10) result = 'due_soon'
+    if (hoursUntilDue < 0) accumulate('overdue')
+    else if (hoursUntilDue === 0) accumulate('due')
+    else if (hoursUntilDue <= 10) accumulate('approaching')
   }
 
   return result
