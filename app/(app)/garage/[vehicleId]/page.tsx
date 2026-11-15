@@ -8,9 +8,9 @@ import { LogForm } from '@/components/maintenance/log-form'
 import { ReminderForm } from '@/components/reminders/reminder-form'
 import { AttachmentsTab } from '@/components/garage/attachments-tab'
 import { RemindersTab } from '@/components/reminders/reminders-tab'
-import { getReminderStatus, VEHICLE_TYPE_LABELS, type MaintenanceLog, type Reminder, type ReminderStatus } from '@/types'
+import { getReminderStatus, VEHICLE_TYPE_LABELS, type MaintenanceLog, type Reminder, type ReminderStatus, type VehicleType } from '@/types'
 import { formatDateOnly } from '@/lib/utils'
-import { ArrowLeft, Wrench, Bell, Paperclip, AlertTriangle, Clock, CheckCircle } from 'lucide-react'
+import { ArrowLeft, Wrench, Bell, Paperclip, ShieldAlert, AlertTriangle, Clock, CheckCircle } from 'lucide-react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { cn } from '@/lib/utils'
@@ -18,6 +18,7 @@ import { DeleteVehicleButton } from '@/components/garage/delete-vehicle-button'
 import { EditVehicleDialog } from '@/components/garage/edit-vehicle-dialog'
 import { EditLogDialog } from '@/components/maintenance/edit-log-dialog'
 import { DeleteLogButton } from '@/components/maintenance/delete-log-button'
+import { RecallsTab } from '@/components/garage/recalls-tab'
 
 export default async function VehiclePage({ params }: { params: Promise<{ vehicleId: string }> }) {
   const { vehicleId } = await params
@@ -187,32 +188,39 @@ export default async function VehiclePage({ params }: { params: Promise<{ vehicl
 
       {/* Tabs */}
       <Tabs defaultValue="history" className="space-y-5">
-        <TabsList className="bg-card border border-border/70 p-1 rounded-xl w-full grid grid-cols-3 h-auto">
+        <TabsList className="bg-card border border-border/70 p-1 rounded-xl w-full grid grid-cols-4 h-auto">
           <TabsTrigger
             value="history"
-            className="rounded-lg py-2 text-sm font-medium text-muted-foreground data-active:bg-primary/15 data-active:text-primary transition-all"
+            className="rounded-lg py-2 text-xs sm:text-sm font-medium text-muted-foreground data-active:bg-primary/15 data-active:text-primary transition-all"
           >
-            <Wrench className="h-3.5 w-3.5 mr-1.5 shrink-0" />
+            <Wrench className="h-3.5 w-3.5 mr-1 sm:mr-1.5 shrink-0" />
             History
           </TabsTrigger>
           <TabsTrigger
             value="reminders"
-            className="rounded-lg py-2 text-sm font-medium text-muted-foreground data-active:bg-primary/15 data-active:text-primary transition-all"
+            className="rounded-lg py-2 text-xs sm:text-sm font-medium text-muted-foreground data-active:bg-primary/15 data-active:text-primary transition-all"
           >
-            <Bell className="h-3.5 w-3.5 mr-1.5 shrink-0" />
+            <Bell className="h-3.5 w-3.5 mr-1 sm:mr-1.5 shrink-0" />
             Reminders
             {urgentCount > 0 && (
-              <span className="ml-1.5 bg-warning text-black text-[10px] rounded px-1 inline-flex items-center justify-center font-bold leading-none shrink-0 h-4">
+              <span className="ml-1 sm:ml-1.5 bg-warning text-black text-[10px] rounded px-1 inline-flex items-center justify-center font-bold leading-none shrink-0 h-4">
                 {urgentCount}
               </span>
             )}
           </TabsTrigger>
           <TabsTrigger
             value="documents"
-            className="rounded-lg py-2 text-sm font-medium text-muted-foreground data-active:bg-primary/15 data-active:text-primary transition-all"
+            className="rounded-lg py-2 text-xs sm:text-sm font-medium text-muted-foreground data-active:bg-primary/15 data-active:text-primary transition-all"
           >
-            <Paperclip className="h-3.5 w-3.5 mr-1.5 shrink-0" />
+            <Paperclip className="h-3.5 w-3.5 mr-1 sm:mr-1.5 shrink-0" />
             Docs
+          </TabsTrigger>
+          <TabsTrigger
+            value="recalls"
+            className="rounded-lg py-2 text-xs sm:text-sm font-medium text-muted-foreground data-active:bg-primary/15 data-active:text-primary transition-all"
+          >
+            <ShieldAlert className="h-3.5 w-3.5 mr-1 sm:mr-1.5 shrink-0" />
+            Recalls
           </TabsTrigger>
         </TabsList>
 
@@ -294,6 +302,20 @@ export default async function VehiclePage({ params }: { params: Promise<{ vehicl
             vehicleId={vehicle.id}
             userId={user.id}
             attachments={attachments || []}
+          />
+        </TabsContent>
+
+        {/* Safety Recalls */}
+        <TabsContent value="recalls" className="space-y-4">
+          <h2 className="text-sm font-semibold text-foreground">Safety Recalls</h2>
+          <RecallsTab
+            vehicleId={vehicle.id}
+            vehicleName={vehicle.name}
+            vehicleType={vehicle.type as VehicleType}
+            make={vehicle.make}
+            year={vehicle.year}
+            model={vehicle.model}
+            vin={vehicle.vin}
           />
         </TabsContent>
       </Tabs>
