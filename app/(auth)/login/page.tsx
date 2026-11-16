@@ -1,6 +1,12 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useLayoutEffect } from 'react'
+
+// useLayoutEffect fires before the browser paints (unlike useEffect which fires after).
+// This ensures the Google button is removed from the DOM before the first visible frame,
+// preventing a ~100ms–1s window where the button is interactive with isNative=false.
+// Server-safe: falls back to useEffect on SSR (no-op, no warning).
+const useSafeLayoutEffect = typeof window !== 'undefined' ? useLayoutEffect : useEffect
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
@@ -22,7 +28,7 @@ export default function LoginPage() {
   const [googleLoading, setGoogleLoading] = useState(false)
   const [isNative, setIsNative] = useState(false)
 
-  useEffect(() => {
+  useSafeLayoutEffect(() => {
     setIsNative(Capacitor.isNativePlatform())
   }, [])
 
@@ -40,6 +46,7 @@ export default function LoginPage() {
   }
 
   async function handleGoogleLogin() {
+    if (Capacitor.isNativePlatform()) return
     setGoogleLoading(true)
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',

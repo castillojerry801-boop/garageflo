@@ -23,7 +23,7 @@ const config: CapacitorConfig = {
   webDir: 'public',
 
   server: {
-    url: 'https://garageflo.app',
+    url: 'https://www.garageflo.app',
     cleartext: false,
     // Loads this local page when server.url is unreachable (no network).
     errorPath: 'offline.html',
