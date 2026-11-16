@@ -17,7 +17,6 @@
 		50B271D11FEDC1A000F3C39B /* public in Resources */ = {isa = PBXBuildFile; fileRef = 50B271D01FEDC1A000F3C39B /* public */; };
 		9582B6832FE993A70072D4E8 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9582B6822FE993A50072D4E8 /* SceneDelegate.swift */; };
 		62F3E928B8AF4C6BA686D062 /* NativeAuthPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 417F5A1875A7452F8ED52330 /* NativeAuthPlugin.swift */; };
-		7F9389A37BD6456AA038F934 /* GarageFloViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5EB26BDDE2954EA195912A13 /* GarageFloViewController.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -32,7 +31,6 @@
 		50B271D01FEDC1A000F3C39B /* public */ = {isa = PBXFileReference; lastKnownFileType = folder; path = public; sourceTree = "<group>"; };
 		9582B6822FE993A50072D4E8 /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
 		417F5A1875A7452F8ED52330 /* NativeAuthPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeAuthPlugin.swift; sourceTree = "<group>"; };
-		5EB26BDDE2954EA195912A13 /* GarageFloViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GarageFloViewController.swift; sourceTree = "<group>"; };
 		958DCC722DB07C7200EA8C5F /* debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = debug.xcconfig; path = ../debug.xcconfig; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
@@ -70,7 +68,6 @@
 			children = (
 				9582B6822FE993A50072D4E8 /* SceneDelegate.swift */,
 				417F5A1875A7452F8ED52330 /* NativeAuthPlugin.swift */,
-				5EB26BDDE2954EA195912A13 /* GarageFloViewController.swift */,
 				50379B222058CBB4000EE86E /* capacitor.config.json */,
 				504EC3071FED79650016851F /* AppDelegate.swift */,
 				504EC30B1FED79650016851F /* Main.storyboard */,
@@ -168,7 +165,6 @@
 				504EC3081FED79650016851F /* AppDelegate.swift in Sources */,
 				9582B6832FE993A70072D4E8 /* SceneDelegate.swift in Sources */,
 				62F3E928B8AF4C6BA686D062 /* NativeAuthPlugin.swift in Sources */,
-				7F9389A37BD6456AA038F934 /* GarageFloViewController.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

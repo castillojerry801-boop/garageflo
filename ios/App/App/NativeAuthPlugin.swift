@@ -13,7 +13,8 @@ import AuthenticationServices
 ///   - Does NOT modify the WKWebView's cookie storage, so the PKCE code_verifier stored
 ///     by signInWithOAuth(skipBrowserRedirect:true) is intact for exchangeCodeForSession
 ///
-/// Registration: declared in GarageFloViewController.capacitorDidLoad via registerPluginType.
+/// Registration: "NativeAuthPlugin" is listed in ios/App/App/capacitor.config.json
+/// packageClassList so the Capacitor bridge discovers it via NSClassFromString on startup.
 @objc(NativeAuthPlugin)
 final class NativeAuthPlugin: CAPPlugin, CAPBridgedPlugin {
 
