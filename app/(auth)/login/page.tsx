@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useLayoutEffect } from 'react'
+import { useState, useEffect, useLayoutEffect, useRef } from 'react'
 
 // useLayoutEffect fires before the browser paints (unlike useEffect which fires after).
 // This ensures the Google button is removed from the DOM before the first visible frame,
@@ -12,6 +12,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
 import { Capacitor } from '@capacitor/core'
+import { nativeGoogleAuth } from '@/lib/native-auth'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -27,9 +28,18 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [googleLoading, setGoogleLoading] = useState(false)
   const [isNative, setIsNative] = useState(false)
+  // SSR default true: Google button is visible until native platform is confirmed.
+  // On native without the NativeAuth plugin (old builds), flips to false before first paint.
+  const [showGoogleButton, setShowGoogleButton] = useState(true)
+  const authInProgress = useRef(false)
 
   useSafeLayoutEffect(() => {
-    setIsNative(Capacitor.isNativePlatform())
+    const native = Capacitor.isNativePlatform()
+    setIsNative(native)
+    if (native) {
+      // Show Google button on native only when NativeAuth plugin is compiled in.
+      setShowGoogleButton(Capacitor.isPluginAvailable('NativeAuth'))
+    }
   }, [])
 
   async function handleLogin(e: React.FormEvent) {
@@ -46,15 +56,36 @@ export default function LoginPage() {
   }
 
   async function handleGoogleLogin() {
-    if (Capacitor.isNativePlatform()) return
-    setGoogleLoading(true)
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: { redirectTo: `${window.location.origin}/auth/callback` },
-    })
-    if (error) {
-      toast.error(error.message)
-      setGoogleLoading(false)
+    if (Capacitor.isNativePlatform()) {
+      // Native: ASWebAuthenticationSession + Supabase PKCE exchange
+      if (authInProgress.current) return
+      authInProgress.current = true
+      setGoogleLoading(true)
+      try {
+        const result = await nativeGoogleAuth()
+        if (result.status === 'success') {
+          // Full navigation triggers SSR middleware to validate the session cookies
+          window.location.href = '/dashboard'
+        } else if (result.status === 'cancelled') {
+          setGoogleLoading(false)
+        } else {
+          toast.error(result.message)
+          setGoogleLoading(false)
+        }
+      } finally {
+        authInProgress.current = false
+      }
+    } else {
+      // Web: standard Supabase OAuth redirect
+      setGoogleLoading(true)
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: { redirectTo: `${window.location.origin}/auth/callback` },
+      })
+      if (error) {
+        toast.error(error.message)
+        setGoogleLoading(false)
+      }
     }
   }
 
@@ -71,10 +102,10 @@ export default function LoginPage() {
             <CardDescription>Sign in to your garage</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            {/* Google OAuth is hidden on native iOS — WKWebView gets a 403 from Google.
-                Email/password is the supported sign-in method for the native build.
-                Google sign-in remains fully functional on the web. */}
-            {!isNative && (
+            {/* Google sign-in: shown on web always, and on native when NativeAuth plugin
+                is compiled in (ASWebAuthenticationSession + PKCE flow). Old native builds
+                without the Swift plugin hide the button safely via showGoogleButton. */}
+            {showGoogleButton && (
               <>
                 <Button
                   type="button"
