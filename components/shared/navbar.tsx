@@ -46,7 +46,7 @@ export function Navbar({ user }: NavbarProps) {
 
         {/* Logo */}
         <Link href="/dashboard" className="flex items-center gap-2 shrink-0">
-          <Image src="/logo.jpeg" alt="GarageFlo" width={48} height={48} className="rounded-md w-10 h-10 sm:w-12 sm:h-12" />
+          <Image src="/logo.jpeg" alt="GarageFlo" width={48} height={48} className="rounded-md w-11 h-11 sm:w-12 sm:h-12" />
           <span className="font-bold text-sm tracking-tight hidden sm:block">
             <span className="text-foreground">Garage</span><span className="text-primary">Flo</span>
           </span>

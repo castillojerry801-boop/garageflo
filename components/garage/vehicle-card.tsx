@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import Image from 'next/image'
+import { VehicleImage } from '@/components/garage/vehicle-image'
 import { Vehicle, Reminder, getReminderStatus, VEHICLE_TYPE_LABELS, type ReminderStatus } from '@/types'
 import { cn } from '@/lib/utils'
 
@@ -20,98 +20,92 @@ export function VehicleCard({ vehicle, reminders = [], isRearranging = false }: 
 
   const hasReminders = reminders.length > 0
   const hasUrgent = hasReminders && worstStatus !== 'ok'
-  const hasPhoto = !!vehicle.photo_url
   const subtitle = [vehicle.year, vehicle.make, vehicle.model].filter(Boolean).join(' ')
 
-  const bottomText = vehicle.tracking_method === 'date'
-    ? 'Date-based maintenance'
-    : vehicle.mileage != null
-    ? `${vehicle.mileage.toLocaleString()} mi`
-    : vehicle.engine_hours != null
-    ? `${vehicle.engine_hours.toLocaleString()} hrs`
-    : 'No mileage recorded'
+  const mileageText =
+    vehicle.tracking_method === 'date'
+      ? 'Date-based'
+      : vehicle.mileage != null
+      ? `${vehicle.mileage.toLocaleString()} mi`
+      : vehicle.engine_hours != null
+      ? `${vehicle.engine_hours.toLocaleString()} hrs`
+      : null
 
-  const sc: Record<ReminderStatus, { label: string; dot: string; text: string; border: string }> = {
-    overdue:    { label: 'Overdue',     dot: 'bg-danger',  text: 'text-danger',  border: 'border-danger/50' },
-    due:        { label: 'Due Now',     dot: 'bg-danger',  text: 'text-danger',  border: 'border-danger/50' },
-    approaching:{ label: 'Approaching', dot: 'bg-warning', text: 'text-warning', border: 'border-warning/45' },
-    ok:         { label: 'Up to Date',  dot: 'bg-success', text: 'text-success', border: 'border-border' },
-  }
-  const statusConfig = sc[worstStatus]
+  const ss = {
+    overdue:    { label: 'Overdue',  pillCls: 'bg-danger text-white',    dot: 'bg-danger',   border: 'border-danger/40' },
+    due:        { label: 'Due Now',  pillCls: 'bg-danger text-white',    dot: 'bg-danger',   border: 'border-danger/40' },
+    approaching:{ label: 'Due Soon', pillCls: 'bg-warning text-black',   dot: 'bg-warning',  border: 'border-warning/35' },
+    ok:         { label: 'OK',       pillCls: 'bg-success/80 text-black', dot: 'bg-success', border: 'border-border/60' },
+  }[worstStatus]
 
   const cardEl = (
-    <article className={cn(
-      'relative bg-card rounded-xl overflow-hidden border transition-all duration-150',
-      !isRearranging && 'group-hover:shadow-xl group-hover:shadow-black/40 group-hover:-translate-y-0.5',
-      hasUrgent ? statusConfig.border : 'border-border/70 group-hover:border-border',
-    )}>
-      {/* 2px status accent at top */}
-      {hasUrgent && (
-        <div className={cn(
-          'absolute top-0 inset-x-0 h-[2px] z-10',
-          worstStatus === 'overdue' || worstStatus === 'due' ? 'bg-danger' : 'bg-warning'
-        )} />
+    <article
+      className={cn(
+        'relative bg-card rounded-2xl overflow-hidden border transition-all duration-200',
+        !isRearranging && 'group-hover:shadow-2xl group-hover:shadow-black/50 group-hover:-translate-y-1',
+        hasUrgent ? ss.border : 'border-border/60 group-hover:border-border',
       )}
+    >
+      {/* Vehicle image hero */}
+      <div className="relative h-48 overflow-hidden">
+        <VehicleImage
+          photoUrl={vehicle.photo_url}
+          type={vehicle.type}
+          name={vehicle.name}
+          fill
+          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+          imageClassName={!isRearranging ? 'transition-transform duration-500 group-hover:scale-[1.04]' : undefined}
+        />
 
-      {/* Photo */}
-      {hasPhoto && (
-        <div className="relative h-[144px] overflow-hidden">
-          <Image
-            src={vehicle.photo_url!}
-            alt={vehicle.name}
-            fill
-            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-            className={cn('object-cover', !isRearranging && 'transition-transform duration-300 group-hover:scale-[1.02]')}
-          />
-          <div className="absolute bottom-0 inset-x-0 h-10 bg-gradient-to-t from-black/50 to-transparent" />
-          {hasUrgent && (
-            <div className={cn(
-              'absolute top-2.5 right-2.5 inline-flex items-center gap-1.5 text-[11px] font-semibold px-2 py-1 rounded border backdrop-blur-sm',
-              worstStatus === 'overdue' || worstStatus === 'due'
-                ? 'bg-black/60 text-danger border-danger/50'
-                : 'bg-black/60 text-warning border-warning/45'
-            )}>
-              <span className={cn('w-1.5 h-1.5 rounded-full inline-block', statusConfig.dot)} />
-              {statusConfig.label}
-            </div>
-          )}
-        </div>
-      )}
+        {/* Bottom scrim */}
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.88) 0%, rgba(0,0,0,0.25) 50%, transparent 100%)' }}
+        />
 
-      {/* Information panel */}
-      <div className={cn(
-        'flex flex-col px-4',
-        hasPhoto ? 'pt-3 pb-3.5' : 'pt-4 pb-4 min-h-[108px]'
-      )}>
-        {/* Identity */}
-        <div className="flex items-start justify-between gap-2.5 flex-1">
-          <div className="min-w-0">
-            <h3 className="text-[15px] font-bold text-foreground leading-snug truncate">
-              {vehicle.name}
-            </h3>
-            <p className="text-xs text-muted-foreground mt-0.5 truncate">
-              {subtitle || typeLabel}
-            </p>
-          </div>
-          {subtitle && (
-            <span className="text-[10px] font-semibold text-primary/70 uppercase tracking-widest shrink-0 mt-0.5">
-              {typeLabel}
-            </span>
-          )}
-        </div>
-
-        {/* Bottom bar */}
-        <div className="flex items-center justify-between gap-2 mt-3 pt-2.5 border-t border-border/50">
-          <span className="text-xs font-medium text-muted-foreground tabular-nums">
-            {bottomText}
+        {/* Top badges */}
+        <div className="absolute top-0 inset-x-0 flex items-start justify-between p-3 pointer-events-none">
+          <span className="text-[10px] font-bold uppercase tracking-widest px-2 py-1 rounded-lg bg-black/35 text-white/55 backdrop-blur-sm leading-none">
+            {typeLabel}
           </span>
-          {hasReminders && (
-            <span className={cn('inline-flex items-center gap-1.5 text-[11px] font-semibold', statusConfig.text)}>
-              <span className={cn('w-1.5 h-1.5 rounded-full inline-block shrink-0', statusConfig.dot)} />
-              {statusConfig.label}
+          {hasUrgent && (
+            <span className={cn('text-[11px] font-bold px-2.5 py-1 rounded-lg leading-none shadow-sm', ss.pillCls)}>
+              {ss.label}
             </span>
           )}
         </div>
+
+        {/* Bottom identity */}
+        <div className="absolute bottom-0 inset-x-0 px-4 pb-4 pointer-events-none">
+          <h3 className="text-[17px] font-black text-white leading-tight truncate tracking-tight">
+            {vehicle.name}
+          </h3>
+          {subtitle && (
+            <p className="text-xs text-white/50 mt-0.5 truncate font-medium">{subtitle}</p>
+          )}
+        </div>
+      </div>
+
+      {/* Info strip */}
+      <div className="flex items-center justify-between gap-2 px-4 py-3 border-t border-border/40 bg-secondary/10">
+        <span className="text-xs font-semibold text-muted-foreground tabular-nums">
+          {mileageText ?? 'No reading'}
+        </span>
+        {hasReminders && (
+          <span
+            className={cn(
+              'inline-flex items-center gap-1.5 text-[11px] font-semibold',
+              hasUrgent
+                ? worstStatus === 'approaching'
+                  ? 'text-warning'
+                  : 'text-danger'
+                : 'text-success/70',
+            )}
+          >
+            <span className={cn('w-1.5 h-1.5 rounded-full inline-block shrink-0', ss.dot)} />
+            {reminders.length} reminder{reminders.length !== 1 ? 's' : ''}
+          </span>
+        )}
       </div>
     </article>
   )
@@ -121,7 +115,7 @@ export function VehicleCard({ vehicle, reminders = [], isRearranging = false }: 
   return (
     <Link
       href={`/garage/${vehicle.id}`}
-      className="group block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-xl"
+      className="group block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-2xl"
     >
       {cardEl}
     </Link>

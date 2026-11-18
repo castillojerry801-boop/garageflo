@@ -8,11 +8,18 @@ import { LogForm } from '@/components/maintenance/log-form'
 import { ReminderForm } from '@/components/reminders/reminder-form'
 import { AttachmentsTab } from '@/components/garage/attachments-tab'
 import { RemindersTab } from '@/components/reminders/reminders-tab'
-import { getReminderStatus, VEHICLE_TYPE_LABELS, type MaintenanceLog, type Reminder, type ReminderStatus, type VehicleType } from '@/types'
+import { VehicleImage } from '@/components/garage/vehicle-image'
+import {
+  getReminderStatus,
+  VEHICLE_TYPE_LABELS,
+  type MaintenanceLog,
+  type Reminder,
+  type ReminderStatus,
+  type VehicleType,
+} from '@/types'
 import { formatDateOnly } from '@/lib/utils'
 import { ArrowLeft, Wrench, Bell, Paperclip, ShieldAlert, AlertTriangle, Clock, CheckCircle } from 'lucide-react'
 import Link from 'next/link'
-import Image from 'next/image'
 import { cn } from '@/lib/utils'
 import { DeleteVehicleButton } from '@/components/garage/delete-vehicle-button'
 import { EditVehicleDialog } from '@/components/garage/edit-vehicle-dialog'
@@ -21,6 +28,7 @@ import { DeleteLogButton } from '@/components/maintenance/delete-log-button'
 import { RecallsTab } from '@/components/garage/recalls-tab'
 
 export default async function VehiclePage({ params }: { params: Promise<{ vehicleId: string }> }) {
+  await connection()
   const { vehicleId } = await params
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -43,8 +51,6 @@ export default async function VehiclePage({ params }: { params: Promise<{ vehicl
 
   const typeLabel = VEHICLE_TYPE_LABELS[vehicle.type as keyof typeof VEHICLE_TYPE_LABELS] || 'Vehicle'
 
-  await connection()
-
   const STATUS_RANK: Record<ReminderStatus, number> = { ok: 0, approaching: 1, due: 2, overdue: 3 }
   const worstStatus = (reminders || []).reduce<ReminderStatus>((worst, r: Reminder) => {
     const s = getReminderStatus(r, vehicle.mileage, vehicle.engine_hours)
@@ -55,128 +61,105 @@ export default async function VehiclePage({ params }: { params: Promise<{ vehicl
   const urgentCount = (reminders || []).filter((r: Reminder) => getReminderStatus(r, vehicle.mileage, vehicle.engine_hours) !== 'ok').length
   const subtitle = [vehicle.year, vehicle.make, vehicle.model].filter(Boolean).join(' ')
 
-  const StatusIcon = worstStatus === 'overdue' || worstStatus === 'due'
-    ? AlertTriangle
-    : worstStatus === 'approaching'
-    ? Clock
-    : CheckCircle
-  const statusLabel = worstStatus === 'overdue'
-    ? 'Overdue'
-    : worstStatus === 'due'
-    ? 'Due Now'
-    : worstStatus === 'approaching'
-    ? 'Approaching'
-    : 'Up to Date'
+  const StatusIcon =
+    worstStatus === 'overdue' || worstStatus === 'due'
+      ? AlertTriangle
+      : worstStatus === 'approaching'
+      ? Clock
+      : CheckCircle
+
+  const statusLabel =
+    worstStatus === 'overdue' ? 'Overdue' :
+    worstStatus === 'due' ? 'Due Now' :
+    worstStatus === 'approaching' ? 'Approaching' :
+    'Up to Date'
+
   const statusChipClass = {
-    overdue:    'bg-danger/10 text-danger border-danger/30',
-    due:        'bg-danger/10 text-danger border-danger/30',
-    approaching:'bg-warning/10 text-warning border-warning/30',
-    ok:         'bg-success/10 text-success border-success/25',
+    overdue:    'bg-danger text-white',
+    due:        'bg-danger text-white',
+    approaching:'bg-warning text-black',
+    ok:         'bg-success/80 text-black',
   }[worstStatus]
 
-  const mileageText = vehicle.mileage != null
-    ? `${vehicle.mileage.toLocaleString()} mi`
-    : vehicle.engine_hours != null
-    ? `${vehicle.engine_hours.toLocaleString()} hrs`
-    : null
+  const mileageText =
+    vehicle.mileage != null
+      ? `${vehicle.mileage.toLocaleString()} mi`
+      : vehicle.engine_hours != null
+      ? `${vehicle.engine_hours.toLocaleString()} hrs`
+      : null
 
   return (
     <div className="space-y-5 max-w-3xl mx-auto">
 
-      <Link
-        href="/dashboard"
-        className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
-      >
-        <ArrowLeft className="h-4 w-4" />
-        My Garage
-      </Link>
+      {/* ── Vehicle hero ─────────────────────────────────────────────── */}
+      <div className="relative rounded-2xl overflow-hidden h-64 sm:h-80 border border-border/50 shadow-2xl shadow-black/40">
+        <VehicleImage
+          photoUrl={vehicle.photo_url}
+          type={vehicle.type as VehicleType}
+          name={vehicle.name}
+          fill
+          priority
+          sizes="(max-width: 768px) 100vw, 768px"
+        />
 
-      {/* Vehicle header */}
-      {vehicle.photo_url ? (
-        /* Photo hero */
-        <div className="relative rounded-xl overflow-hidden h-52 border border-border/70">
-          <Image src={vehicle.photo_url} alt={vehicle.name} fill className="object-cover" />
-          <div
-            className="absolute inset-0"
-            style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.80) 0%, rgba(0,0,0,0.15) 55%, transparent 100%)' }}
-          />
-          <div className="absolute bottom-0 left-0 right-0 px-5 pb-5 pt-10">
-            <div className="flex items-end justify-between gap-4 flex-wrap">
-              <div className="min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-[10px] font-semibold uppercase tracking-widest text-white/50">{typeLabel}</span>
-                </div>
-                <h1 className="text-xl font-bold text-white mt-0.5 truncate">{vehicle.name}</h1>
-                {subtitle && <p className="text-sm text-white/60 mt-0.5 truncate">{subtitle}</p>}
-              </div>
-              <div className="flex items-center gap-2 shrink-0">
-                {(reminders || []).length > 0 && (
-                  <span className={cn('inline-flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded border backdrop-blur-sm', statusChipClass)}>
-                    <StatusIcon className="h-3 w-3" />
-                    {statusLabel}
-                  </span>
-                )}
-                <EditVehicleDialog vehicle={vehicle} />
-                <DeleteVehicleButton vehicleId={vehicle.id} vehicleName={vehicle.name} />
-              </div>
-            </div>
-          </div>
-        </div>
-      ) : (
-        /* Compact profile header */
-        <div className="bg-card border border-border/70 rounded-xl px-5 py-4 flex items-center gap-4">
-          <div className="shrink-0 h-10 w-10 rounded-lg bg-secondary/60 border border-border/50 flex items-center justify-center">
-            <span className="text-xs font-bold text-muted-foreground/60 uppercase tracking-tight">
-              {vehicle.name.trim().split(/\s+/).map((w: string) => w[0]).filter(Boolean).join('').slice(0, 2)}
-            </span>
-          </div>
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2 flex-wrap">
-              <h1 className="text-base font-bold text-foreground truncate">{vehicle.name}</h1>
-              <span className="text-[10px] font-medium text-muted-foreground/70 uppercase tracking-wide shrink-0">{typeLabel}</span>
-              {(reminders || []).length > 0 && (
-                <span className={cn('inline-flex items-center gap-1 text-[11px] font-semibold px-1.5 py-0.5 rounded border shrink-0', statusChipClass)}>
-                  <StatusIcon className="h-2.5 w-2.5" />
-                  {statusLabel}
-                </span>
-              )}
-            </div>
-            {subtitle && <p className="text-sm text-muted-foreground mt-0.5 truncate">{subtitle}</p>}
-            {mileageText && <p className="text-xs text-muted-foreground mt-0.5 tabular-nums">{mileageText}</p>}
-          </div>
-          <div className="shrink-0 flex items-center gap-1">
+        {/* Top gradient scrim */}
+        <div className="absolute top-0 inset-x-0 h-28 bg-gradient-to-b from-black/75 to-transparent pointer-events-none" />
+
+        {/* Bottom gradient scrim */}
+        <div
+          className="absolute bottom-0 inset-x-0 pointer-events-none"
+          style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.92) 0%, rgba(0,0,0,0.55) 42%, transparent 100%)' }}
+        />
+
+        {/* Top row: back link + edit / delete */}
+        <div className="absolute top-0 inset-x-0 flex items-center justify-between px-4 py-3 sm:py-4">
+          <Link
+            href="/dashboard"
+            className="inline-flex items-center gap-1.5 text-sm font-medium text-white/75 hover:text-white transition-colors"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            <span>My Garage</span>
+          </Link>
+          <div className="flex items-center gap-1.5">
             <EditVehicleDialog vehicle={vehicle} />
             <DeleteVehicleButton vehicleId={vehicle.id} vehicleName={vehicle.name} />
           </div>
         </div>
-      )}
 
-      {/* Stats strip */}
+        {/* Bottom identity */}
+        <div className="absolute bottom-0 inset-x-0 px-5 pb-5 pointer-events-none">
+          <div className="flex items-center gap-2 flex-wrap mb-1.5">
+            <span className="text-[10px] font-bold uppercase tracking-widest text-white/45">{typeLabel}</span>
+            {(reminders || []).length > 0 && (
+              <span className={cn('inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-lg', statusChipClass)}>
+                <StatusIcon className="h-3 w-3" />
+                {statusLabel}
+              </span>
+            )}
+          </div>
+          {/* Show year/make/model as the primary identity; fall back to custom name */}
+          <h1 className="text-2xl sm:text-3xl font-black text-white leading-none tracking-tight truncate">
+            {subtitle || vehicle.name}
+          </h1>
+          {/* Show custom name only when it differs from the subtitle */}
+          {subtitle && vehicle.name !== subtitle && (
+            <p className="text-sm font-medium text-white/55 mt-0.5 truncate">{vehicle.name}</p>
+          )}
+          {mileageText && (
+            <p className="text-sm font-semibold text-white/65 mt-1.5 tabular-nums">{mileageText}</p>
+          )}
+        </div>
+      </div>
+
+      {/* ── Stats strip ──────────────────────────────────────────────── */}
       <div className="bg-card border border-border/70 rounded-xl grid grid-cols-3 divide-x divide-border/60 overflow-hidden">
         <div className="px-4 py-4 text-center">
           <p className="text-xl font-bold text-foreground tabular-nums">{(logs || []).length}</p>
           <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mt-0.5">Services</p>
         </div>
         <div className="px-4 py-4 text-center">
-          {vehicle.tracking_method === 'date' ? (
-            <>
-              <p className="text-xl font-bold text-foreground tabular-nums">{(reminders || []).length}</p>
-              <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mt-0.5">Reminders</p>
-            </>
-          ) : (
-            <>
-              <p className="text-xl font-bold text-foreground tabular-nums">
-                {vehicle.mileage != null
-                  ? vehicle.mileage.toLocaleString()
-                  : vehicle.engine_hours != null
-                  ? vehicle.engine_hours.toLocaleString()
-                  : '—'}
-              </p>
-              <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mt-0.5">
-                {vehicle.engine_hours != null && vehicle.mileage == null ? 'Hours' : 'Miles'}
-              </p>
-            </>
-          )}
+          <p className="text-xl font-bold text-foreground tabular-nums">{(reminders || []).length}</p>
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mt-0.5">Reminders</p>
         </div>
         <div className="px-4 py-4 text-center">
           <p className="text-xl font-bold text-foreground tabular-nums">
@@ -186,45 +169,45 @@ export default async function VehiclePage({ params }: { params: Promise<{ vehicl
         </div>
       </div>
 
-      {/* Tabs */}
+      {/* ── Tabs ─────────────────────────────────────────────────────── */}
       <Tabs defaultValue="history" className="space-y-5">
-        <TabsList className="bg-card border border-border/70 p-1 rounded-xl w-full grid grid-cols-4 h-auto">
+        <TabsList className="bg-card border border-border/70 p-1 rounded-xl w-full h-auto flex overflow-x-auto [&::-webkit-scrollbar]:hidden">
           <TabsTrigger
             value="history"
-            className="rounded-lg py-2 text-xs sm:text-sm font-medium text-muted-foreground data-active:bg-primary/15 data-active:text-primary transition-all"
+            className="rounded-lg py-2.5 px-3 shrink-0 grow text-xs sm:text-sm font-medium text-muted-foreground data-active:bg-primary/15 data-active:text-primary transition-all whitespace-nowrap"
           >
-            <Wrench className="h-3.5 w-3.5 mr-1 sm:mr-1.5 shrink-0" />
+            <Wrench className="h-3.5 w-3.5 mr-1.5 shrink-0" />
             History
           </TabsTrigger>
           <TabsTrigger
             value="reminders"
-            className="rounded-lg py-2 text-xs sm:text-sm font-medium text-muted-foreground data-active:bg-primary/15 data-active:text-primary transition-all"
+            className="rounded-lg py-2.5 px-3 shrink-0 grow text-xs sm:text-sm font-medium text-muted-foreground data-active:bg-primary/15 data-active:text-primary transition-all whitespace-nowrap"
           >
-            <Bell className="h-3.5 w-3.5 mr-1 sm:mr-1.5 shrink-0" />
+            <Bell className="h-3.5 w-3.5 mr-1.5 shrink-0" />
             Reminders
             {urgentCount > 0 && (
-              <span className="ml-1 sm:ml-1.5 bg-warning text-black text-[10px] rounded px-1 inline-flex items-center justify-center font-bold leading-none shrink-0 h-4">
+              <span className="ml-1.5 bg-warning text-black text-[10px] rounded px-1 inline-flex items-center justify-center font-bold leading-none shrink-0 h-4">
                 {urgentCount}
               </span>
             )}
           </TabsTrigger>
           <TabsTrigger
             value="documents"
-            className="rounded-lg py-2 text-xs sm:text-sm font-medium text-muted-foreground data-active:bg-primary/15 data-active:text-primary transition-all"
+            className="rounded-lg py-2.5 px-3 shrink-0 grow text-xs sm:text-sm font-medium text-muted-foreground data-active:bg-primary/15 data-active:text-primary transition-all whitespace-nowrap"
           >
-            <Paperclip className="h-3.5 w-3.5 mr-1 sm:mr-1.5 shrink-0" />
+            <Paperclip className="h-3.5 w-3.5 mr-1.5 shrink-0" />
             Docs
           </TabsTrigger>
           <TabsTrigger
             value="recalls"
-            className="rounded-lg py-2 text-xs sm:text-sm font-medium text-muted-foreground data-active:bg-primary/15 data-active:text-primary transition-all"
+            className="rounded-lg py-2.5 px-3 shrink-0 grow text-xs sm:text-sm font-medium text-muted-foreground data-active:bg-primary/15 data-active:text-primary transition-all whitespace-nowrap"
           >
-            <ShieldAlert className="h-3.5 w-3.5 mr-1 sm:mr-1.5 shrink-0" />
+            <ShieldAlert className="h-3.5 w-3.5 mr-1.5 shrink-0" />
             Recalls
           </TabsTrigger>
         </TabsList>
 
-        {/* Maintenance History */}
+        {/* ── Maintenance History ──── */}
         <TabsContent value="history" className="space-y-4">
           <div className="flex items-center justify-between">
             <div>
@@ -235,48 +218,74 @@ export default async function VehiclePage({ params }: { params: Promise<{ vehicl
                 </p>
               )}
             </div>
-            <LogForm vehicleId={vehicle.id} reminders={reminders || []} trackingMethod={vehicle.tracking_method} currentMileage={vehicle.mileage} currentHours={vehicle.engine_hours} />
+            <LogForm
+              vehicleId={vehicle.id}
+              reminders={reminders || []}
+              trackingMethod={vehicle.tracking_method}
+              currentMileage={vehicle.mileage}
+              currentHours={vehicle.engine_hours}
+            />
           </div>
 
           {(logs || []).length === 0 ? (
-            <div className="text-center py-12 border border-dashed border-border/50 rounded-xl">
-              <p className="text-sm font-medium text-muted-foreground">No service records yet</p>
-              <p className="text-xs text-muted-foreground/60 mt-1">Log your first service to get started</p>
+            <div className="flex flex-col items-center gap-4 py-8 border border-dashed border-border/50 rounded-xl">
+              <div className="text-center">
+                <p className="text-sm font-medium text-muted-foreground">No service records yet</p>
+                <p className="text-xs text-muted-foreground/60 mt-1">Track mileage, cost, and service notes</p>
+              </div>
+              <LogForm
+                vehicleId={vehicle.id}
+                reminders={reminders || []}
+                trackingMethod={vehicle.tracking_method}
+                currentMileage={vehicle.mileage}
+                currentHours={vehicle.engine_hours}
+              />
             </div>
           ) : (
-            <div className="space-y-2">
-              {(logs || []).map((log: MaintenanceLog) => (
-                <div
-                  key={log.id}
-                  className="bg-card border border-border/70 rounded-xl px-4 py-3.5"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <p className="text-sm font-medium text-foreground leading-snug">{log.service_type}</p>
-                    <div className="flex items-center gap-1 shrink-0">
-                      {log.cost != null && (
-                        <span className="text-sm font-semibold text-foreground tabular-nums mr-1">
-                          ${log.cost.toFixed(2)}
-                        </span>
+            /* Timeline layout */
+            <div className="relative">
+              {/* Vertical axis — fades out at bottom */}
+              <div className="absolute left-5 top-5 bottom-6 w-px bg-gradient-to-b from-border/50 via-border/35 to-transparent" />
+
+              <div className="space-y-3">
+                {(logs || []).map((log: MaintenanceLog) => (
+                  <div key={log.id} className="relative flex items-start gap-3">
+                    {/* Timeline node */}
+                    <div className="flex-none w-10 h-10 rounded-full bg-card border border-border/60 flex items-center justify-center z-10 shadow-sm">
+                      <Wrench className="w-3.5 h-3.5 text-primary/50" />
+                    </div>
+
+                    {/* Log card */}
+                    <div className="flex-1 bg-card border border-border/70 rounded-xl px-4 py-3.5 min-w-0 mt-0.5">
+                      <div className="flex items-start justify-between gap-3">
+                        <p className="text-sm font-semibold text-foreground leading-snug">{log.service_type}</p>
+                        <div className="flex items-center gap-1 shrink-0">
+                          {log.cost != null && (
+                            <span className="text-sm font-bold text-foreground tabular-nums mr-1">
+                              ${log.cost.toFixed(2)}
+                            </span>
+                          )}
+                          <EditLogDialog log={log} />
+                          <DeleteLogButton logId={log.id} serviceType={log.service_type} />
+                        </div>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1 tabular-nums">
+                        {formatDateOnly(log.performed_at)}
+                        {log.mileage_at_service != null && ` · ${log.mileage_at_service.toLocaleString()} mi`}
+                        {log.hours_at_service != null && ` · ${log.hours_at_service} hrs`}
+                      </p>
+                      {log.notes && (
+                        <p className="text-xs text-muted-foreground/70 mt-2 leading-relaxed">{log.notes}</p>
                       )}
-                      <EditLogDialog log={log} />
-                      <DeleteLogButton logId={log.id} serviceType={log.service_type} />
                     </div>
                   </div>
-                  <p className="text-xs text-muted-foreground mt-1 tabular-nums">
-                    {formatDateOnly(log.performed_at)}
-                    {log.mileage_at_service != null && ` · ${log.mileage_at_service.toLocaleString()} mi`}
-                    {log.hours_at_service != null && ` · ${log.hours_at_service} hrs`}
-                  </p>
-                  {log.notes && (
-                    <p className="text-xs text-muted-foreground/70 mt-2 leading-relaxed">{log.notes}</p>
-                  )}
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
           )}
         </TabsContent>
 
-        {/* Reminders */}
+        {/* ── Reminders ──── */}
         <TabsContent value="reminders" className="space-y-4">
           <div className="flex items-center justify-between">
             <div>
@@ -295,7 +304,7 @@ export default async function VehiclePage({ params }: { params: Promise<{ vehicl
           />
         </TabsContent>
 
-        {/* Documents */}
+        {/* ── Documents ──── */}
         <TabsContent value="documents" className="space-y-4">
           <h2 className="text-sm font-semibold text-foreground">Documents & Photos</h2>
           <AttachmentsTab
@@ -305,7 +314,7 @@ export default async function VehiclePage({ params }: { params: Promise<{ vehicl
           />
         </TabsContent>
 
-        {/* Safety Recalls */}
+        {/* ── Safety Recalls ──── */}
         <TabsContent value="recalls" className="space-y-4">
           <h2 className="text-sm font-semibold text-foreground">Safety Recalls</h2>
           <RecallsTab

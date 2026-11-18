@@ -1,6 +1,7 @@
 export const instant = false
 
 import { redirect } from 'next/navigation'
+import { connection } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import Image from 'next/image'
 import Link from 'next/link'
@@ -8,6 +9,7 @@ import { cn } from '@/lib/utils'
 import { buttonVariants } from '@/components/ui/button'
 
 export default async function HomePage() {
+  await connection()
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 

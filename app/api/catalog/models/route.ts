@@ -2,9 +2,7 @@ import { NextResponse } from 'next/server'
 import { fetchModels } from '@/lib/catalog/vpic'
 import { getModelSupplement } from '@/lib/catalog/model-supplement'
 
-const CURRENT_YEAR = new Date().getFullYear()
 const MIN_YEAR = 1885
-const MAX_YEAR = CURRENT_YEAR + 2
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
@@ -16,6 +14,7 @@ export async function GET(request: Request) {
   }
 
   const year = parseInt(yearParam, 10)
+  const MAX_YEAR = new Date().getFullYear() + 2
   if (isNaN(year) || year < MIN_YEAR || year > MAX_YEAR) {
     return NextResponse.json({ error: 'year out of range' }, { status: 400 })
   }

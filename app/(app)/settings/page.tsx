@@ -1,5 +1,6 @@
 export const instant = false
 
+import { connection } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -9,6 +10,7 @@ import { SignOutButton } from '@/components/settings/sign-out-button'
 import { User, Bell, Shield } from 'lucide-react'
 
 export default async function SettingsPage() {
+  await connection()
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')

@@ -59,8 +59,15 @@ export function RemindersTab({ reminders, currentMileage, currentHours }: Remind
         return (
           <div
             key={reminder.id}
-            className={cn('bg-card border rounded-xl px-4 py-3.5 flex items-start justify-between gap-4', cfg.border)}
+            className={cn('relative bg-card border rounded-xl overflow-hidden px-4 py-3.5 flex items-start justify-between gap-4', cfg.border)}
           >
+            {/* Left status accent bar */}
+            <div className={cn(
+              'absolute left-0 top-0 bottom-0 w-[3px]',
+              status === 'overdue' || status === 'due' ? 'bg-danger' :
+              status === 'approaching' ? 'bg-warning' : 'bg-success/50'
+            )} />
+
             <div className="flex items-start gap-3 min-w-0">
               <cfg.Icon className={cn('h-4 w-4 shrink-0 mt-0.5', cfg.iconCls)} />
               <div className="min-w-0">

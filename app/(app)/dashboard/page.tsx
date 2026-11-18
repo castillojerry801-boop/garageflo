@@ -7,11 +7,12 @@ import { GarageGrid } from '@/components/garage/garage-grid'
 import { AddVehicleDialog } from '@/components/garage/add-vehicle-dialog'
 import { getReminderStatus, type Reminder, type Vehicle } from '@/types'
 import { formatDateOnly } from '@/lib/utils'
-import { AlertTriangle, Clock } from 'lucide-react'
+import { AlertTriangle, Clock, Gauge, PlusCircle } from 'lucide-react'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
 
 export default async function DashboardPage() {
+  await connection()
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
@@ -52,8 +53,6 @@ export default async function DashboardPage() {
     return acc
   }, {})
 
-  await connection()
-
   const STATUS_RANK = { ok: 0, approaching: 1, due: 2, overdue: 3 } as const
   const urgentReminders = (allReminders || [])
     .map((r: Reminder) => {
@@ -71,12 +70,14 @@ export default async function DashboardPage() {
   return (
     <div className="space-y-6">
 
-      {/* Page header */}
-      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+      {/* ── Page header ──────────────────────────────────────────────── */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-xl font-bold tracking-tight text-foreground">My Garage</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Everything you own. Everything you need to maintain.
+          <h1 className="text-2xl font-black tracking-tight text-foreground">My Garage</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            {itemCount > 0
+              ? `${itemCount} item${itemCount !== 1 ? 's' : ''} · tracking maintenance`
+              : 'Start by adding your first vehicle or equipment'}
           </p>
         </div>
         <div className="shrink-0">
@@ -84,82 +85,102 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      {/* Metrics strip */}
+      {/* ── Metrics strip ────────────────────────────────────────────── */}
       {itemCount > 0 && (
         <div className="bg-card border border-border/70 rounded-xl grid grid-cols-3 divide-x divide-border/60 overflow-hidden">
-          <div className="px-4 py-4">
-            <p className="text-[10px] font-semibold uppercase tracking-widest text-primary/70">Garage Items</p>
-            <p className="text-2xl font-bold text-foreground tabular-nums mt-1">{itemCount}</p>
+          {/* Garage items */}
+          <div className="px-4 py-4 flex flex-col gap-1">
+            <div className="flex items-center gap-2">
+              <Gauge className="h-3.5 w-3.5 text-primary/60 shrink-0" />
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-primary/70">Garage</p>
+            </div>
+            <p className="text-2xl font-black text-foreground tabular-nums">{itemCount}</p>
           </div>
-          <div className={cn('px-4 py-4 transition-colors', overdueCount > 0 && 'bg-danger/[0.06]')}>
-            <p className={cn(
-              'text-[10px] font-semibold uppercase tracking-widest',
-              overdueCount > 0 ? 'text-danger/80' : 'text-muted-foreground'
-            )}>Overdue</p>
-            <p className={cn(
-              'text-2xl font-bold tabular-nums mt-1',
-              overdueCount > 0 ? 'text-danger' : 'text-foreground'
-            )}>{overdueCount}</p>
+
+          {/* Overdue */}
+          <div className={cn('px-4 py-4 flex flex-col gap-1 transition-colors', overdueCount > 0 && 'bg-danger/[0.05]')}>
+            <div className="flex items-center gap-2">
+              <AlertTriangle className={cn('h-3.5 w-3.5 shrink-0', overdueCount > 0 ? 'text-danger/70' : 'text-muted-foreground/50')} />
+              <p className={cn('text-[10px] font-semibold uppercase tracking-widest', overdueCount > 0 ? 'text-danger/80' : 'text-muted-foreground')}>
+                Overdue
+              </p>
+            </div>
+            <p className={cn('text-2xl font-black tabular-nums', overdueCount > 0 ? 'text-danger' : 'text-foreground')}>
+              {overdueCount}
+            </p>
           </div>
-          <div className={cn('px-4 py-4 transition-colors', dueSoonCount > 0 && 'bg-warning/[0.06]')}>
-            <p className={cn(
-              'text-[10px] font-semibold uppercase tracking-widest',
-              dueSoonCount > 0 ? 'text-warning/80' : 'text-muted-foreground'
-            )}>Due Soon</p>
-            <p className={cn(
-              'text-2xl font-bold tabular-nums mt-1',
-              dueSoonCount > 0 ? 'text-warning' : 'text-foreground'
-            )}>{dueSoonCount}</p>
+
+          {/* Due soon */}
+          <div className={cn('px-4 py-4 flex flex-col gap-1 transition-colors', dueSoonCount > 0 && 'bg-warning/[0.05]')}>
+            <div className="flex items-center gap-2">
+              <Clock className={cn('h-3.5 w-3.5 shrink-0', dueSoonCount > 0 ? 'text-warning/70' : 'text-muted-foreground/50')} />
+              <p className={cn('text-[10px] font-semibold uppercase tracking-widest', dueSoonCount > 0 ? 'text-warning/80' : 'text-muted-foreground')}>
+                Due Soon
+              </p>
+            </div>
+            <p className={cn('text-2xl font-black tabular-nums', dueSoonCount > 0 ? 'text-warning' : 'text-foreground')}>
+              {dueSoonCount}
+            </p>
           </div>
         </div>
       )}
 
-      {/* Needs attention */}
+      {/* ── Needs attention ──────────────────────────────────────────── */}
       {urgentReminders.length > 0 && (
         <div className="border border-border/70 rounded-xl overflow-hidden">
           <div className="flex items-center justify-between px-4 py-2.5 border-b border-border/60 bg-secondary/40">
-            <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
-              Needs Attention
-            </span>
-            <span className={cn(
-              'text-[11px] font-semibold',
-              overdueCount > 0 ? 'text-danger' : 'text-warning'
-            )}>
+            <div className="flex items-center gap-2">
+              <AlertTriangle className={cn('h-3.5 w-3.5 shrink-0', overdueCount > 0 ? 'text-danger/70' : 'text-warning/70')} />
+              <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+                Needs Attention
+              </span>
+            </div>
+            <span className={cn('text-[11px] font-semibold', overdueCount > 0 ? 'text-danger' : 'text-warning')}>
               {urgentReminders.length} item{urgentReminders.length !== 1 ? 's' : ''}
             </span>
           </div>
+
           <div className="divide-y divide-border/50">
             {urgentReminders.slice(0, 5).map((reminder) => (
               <Link
                 key={reminder.id}
                 href={`/garage/${reminder.vehicle_id}`}
-                className="flex items-center justify-between gap-4 px-4 py-3 hover:bg-secondary/30 transition-colors"
+                className="flex items-center justify-between gap-4 px-4 py-3 hover:bg-secondary/30 transition-colors group"
               >
                 <div className="flex items-center gap-3 min-w-0">
-                  <span className={cn(
-                    'w-1.5 h-1.5 rounded-full shrink-0',
-                    reminder.status === 'overdue' || reminder.status === 'due' ? 'bg-danger' : 'bg-warning'
-                  )} />
+                  <span
+                    className={cn(
+                      'w-2 h-2 rounded-full shrink-0',
+                      reminder.status === 'overdue' || reminder.status === 'due' ? 'bg-danger' : 'bg-warning',
+                    )}
+                  />
                   <div className="min-w-0">
-                    <span className="text-sm font-medium truncate block">{reminder.service_type}</span>
+                    <span className="text-sm font-semibold truncate block group-hover:text-foreground transition-colors">
+                      {reminder.service_type}
+                    </span>
                     <span className="text-xs text-muted-foreground truncate block">{reminder.vehicle?.name}</span>
                   </div>
                 </div>
-                <div className="shrink-0">
+
+                <div className="shrink-0 text-right">
                   {reminder.next_due_date && (
-                    <span className={cn(
-                      'text-xs font-medium tabular-nums',
-                      reminder.status === 'overdue' || reminder.status === 'due' ? 'text-danger' : 'text-warning'
-                    )}>
+                    <span
+                      className={cn(
+                        'text-xs font-semibold tabular-nums',
+                        reminder.status === 'overdue' || reminder.status === 'due' ? 'text-danger' : 'text-warning',
+                      )}
+                    >
                       {reminder.status === 'overdue' ? 'Overdue' : reminder.status === 'due' ? 'Due Now' : 'Due'}{' '}
                       {formatDateOnly(reminder.next_due_date, { month: 'short', day: 'numeric' })}
                     </span>
                   )}
                   {reminder.next_due_mileage != null && !reminder.next_due_date && (
-                    <span className={cn(
-                      'text-xs font-medium tabular-nums',
-                      reminder.status === 'overdue' || reminder.status === 'due' ? 'text-danger' : 'text-warning'
-                    )}>
+                    <span
+                      className={cn(
+                        'text-xs font-semibold tabular-nums',
+                        reminder.status === 'overdue' || reminder.status === 'due' ? 'text-danger' : 'text-warning',
+                      )}
+                    >
                       at {reminder.next_due_mileage.toLocaleString()} mi
                     </span>
                   )}
@@ -170,14 +191,15 @@ export default async function DashboardPage() {
         </div>
       )}
 
-      {/* Garage grid */}
+      {/* ── Garage grid ──────────────────────────────────────────────── */}
       {itemCount > 0 ? (
         <GarageGrid vehicles={vehicles || []} remindersByVehicle={remindersByVehicle} />
       ) : (
-        <div className="border border-dashed border-border/50 rounded-xl px-8 py-14 text-center">
+        <div className="border border-dashed border-border/50 rounded-xl px-8 py-16 text-center">
+          <PlusCircle className="h-8 w-8 text-muted-foreground/30 mx-auto mb-3" />
           <p className="text-sm font-semibold text-foreground">No items yet</p>
           <p className="text-xs text-muted-foreground mt-1.5">
-            Add your first item to start tracking maintenance.
+            Add your first vehicle or equipment to start tracking maintenance.
           </p>
         </div>
       )}

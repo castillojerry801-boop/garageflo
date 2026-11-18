@@ -76,7 +76,13 @@ export default function LoginPage() {
         authInProgress.current = false
       }
     } else {
-      // Web: standard Supabase OAuth redirect
+      // Web: standard Supabase OAuth redirect.
+      // On localhost, Supabase rejects the redirect_to URL (not in allowed list)
+      // and falls back to site_url (www.garageflo.app). Block it early.
+      if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+        toast.error('Google sign-in is not available on localhost. Use email and password instead.')
+        return
+      }
       setGoogleLoading(true)
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
