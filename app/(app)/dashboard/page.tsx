@@ -34,12 +34,35 @@ export default async function DashboardPage() {
 
   if (!garage) return <div>Error loading garage</div>
 
-  const { data: vehicles = [] } = await supabase
+  const { data: rawVehicles = [] } = await supabase
     .from('vehicles')
     .select('*')
     .eq('user_id', user.id)
     .order('sort_order', { ascending: true, nullsFirst: false })
     .order('created_at', { ascending: false })
+
+  // Batch-resolve signed URLs for vehicles that have an uploaded hero photo.
+  // All photo_url values are storage paths (e.g. {userId}/{vehicleId}/hero.jpg).
+  const photoPaths = (rawVehicles || [])
+    .map(v => v.photo_url)
+    .filter((p): p is string => !!p)
+
+  const signedUrlMap: Record<string, string> = {}
+  if (photoPaths.length > 0) {
+    const { data: signedUrls } = await supabase.storage
+      .from('vehicle-photos')
+      .createSignedUrls(photoPaths, 86400)
+    if (signedUrls) {
+      signedUrls.forEach(({ path, signedUrl }) => {
+        if (path && signedUrl) signedUrlMap[path] = signedUrl
+      })
+    }
+  }
+
+  const vehicles = (rawVehicles || []).map(v => ({
+    ...v,
+    photo_url: v.photo_url ? (signedUrlMap[v.photo_url] ?? null) : null,
+  }))
 
   const { data: allReminders = [] } = await supabase
     .from('reminders')

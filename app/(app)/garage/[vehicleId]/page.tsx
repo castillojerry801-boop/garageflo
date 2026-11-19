@@ -9,6 +9,7 @@ import { ReminderForm } from '@/components/reminders/reminder-form'
 import { AttachmentsTab } from '@/components/garage/attachments-tab'
 import { RemindersTab } from '@/components/reminders/reminders-tab'
 import { VehicleImage } from '@/components/garage/vehicle-image'
+import { VehiclePhotoEditor } from '@/components/garage/vehicle-photo-editor'
 import {
   getReminderStatus,
   VEHICLE_TYPE_LABELS,
@@ -42,6 +43,16 @@ export default async function VehiclePage({ params }: { params: Promise<{ vehicl
     .single()
 
   if (!vehicle) notFound()
+
+  // Resolve signed URL for the user-uploaded hero photo (private bucket).
+  // Falls back to null (gradient fallback) if no photo or signing fails.
+  let resolvedPhotoUrl: string | null = null
+  if (vehicle.photo_url) {
+    const { data: signedData } = await supabase.storage
+      .from('vehicle-photos')
+      .createSignedUrl(vehicle.photo_url, 86400)
+    resolvedPhotoUrl = signedData?.signedUrl ?? null
+  }
 
   const [{ data: logs = [] }, { data: reminders = [] }, { data: attachments = [] }] = await Promise.all([
     supabase.from('maintenance_logs').select('*').eq('vehicle_id', vehicleId).order('performed_at', { ascending: false }),
@@ -94,7 +105,7 @@ export default async function VehiclePage({ params }: { params: Promise<{ vehicl
       {/* ── Vehicle hero ─────────────────────────────────────────────── */}
       <div className="relative rounded-2xl overflow-hidden h-64 sm:h-80 border border-border/50 shadow-2xl shadow-black/40">
         <VehicleImage
-          photoUrl={vehicle.photo_url}
+          photoUrl={resolvedPhotoUrl}
           type={vehicle.type as VehicleType}
           name={vehicle.name}
           fill
@@ -121,8 +132,9 @@ export default async function VehiclePage({ params }: { params: Promise<{ vehicl
             <span>My Garage</span>
           </Link>
           <div className="flex items-center gap-1.5">
+            <VehiclePhotoEditor vehicleId={vehicle.id} userId={user.id} hasPhoto={!!vehicle.photo_url} />
             <EditVehicleDialog vehicle={vehicle} />
-            <DeleteVehicleButton vehicleId={vehicle.id} vehicleName={vehicle.name} />
+            <DeleteVehicleButton vehicleId={vehicle.id} vehicleName={vehicle.name} photoUrl={vehicle.photo_url ?? null} />
           </div>
         </div>
 

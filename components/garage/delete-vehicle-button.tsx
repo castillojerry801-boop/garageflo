@@ -17,9 +17,10 @@ import { Trash2, Loader2 } from 'lucide-react'
 interface DeleteVehicleButtonProps {
   vehicleId: string
   vehicleName: string
+  photoUrl?: string | null
 }
 
-export function DeleteVehicleButton({ vehicleId, vehicleName }: DeleteVehicleButtonProps) {
+export function DeleteVehicleButton({ vehicleId, vehicleName, photoUrl }: DeleteVehicleButtonProps) {
   const router = useRouter()
   const supabase = createClient()
   const [open, setOpen] = useState(false)
@@ -27,6 +28,18 @@ export function DeleteVehicleButton({ vehicleId, vehicleName }: DeleteVehicleBut
 
   async function handleDelete() {
     setLoading(true)
+
+    // Clean up hero photo from storage BEFORE deleting the vehicle row.
+    // While the vehicle row still exists, the storage DELETE policy (Branch A)
+    // allows removal. If this fails, the orphan is harmless — Branch B of the
+    // DELETE policy allows cleanup after vehicle deletion.
+    if (photoUrl) {
+      const { error: storageError } = await supabase.storage
+        .from('vehicle-photos')
+        .remove([photoUrl])
+      if (storageError) console.warn('Photo cleanup warning:', storageError.message)
+    }
+
     const { error } = await supabase.from('vehicles').delete().eq('id', vehicleId)
     if (error) {
       toast.error('Failed to delete vehicle')
